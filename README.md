@@ -33,6 +33,7 @@ Drivers/
   STM32H7xx_HAL_Driver/
   BSP/              Nucleo board support (LEDs, button, COM)
 docs/               Reference manual, programming manual, datasheet, board UM
+tools/              MISRA check script and rule-text extractor
 h7_blinky.ioc       STM32CubeMX configuration
 STM32H723ZGTX_FLASH.ld / _RAM.ld   Linker scripts (run from flash / RAM)
 ```
@@ -40,37 +41,37 @@ STM32H723ZGTX_FLASH.ld / _RAM.ld   Linker scripts (run from flash / RAM)
 ## Coding rules
 
 - Mixed HAL/CMSIS: HAL where it stays clear, CMSIS register access where direct control matters.
-- MISRA C:2012 mandatory and required rules apply.
-- No dynamic memory allocation.
-- `syscalls.c` and `sysmem.c` are **excluded from the build on purpose**, so any accidental `malloc` or `printf` fails at link time instead of quietly working.
+- MISRA C:2025 mandatory and required rules apply.
+- No dynamic memory allocation, no stdio.
+- Enforced at link time: `syscalls.c`/`sysmem.c` are excluded from the build **and** the linker's "System calls" option is set to *none* (no `nosys.specs`). Any reachable `malloc` or `printf` fails with `undefined reference to _sbrk / _write`. Excluding the files alone is not enough, because `nosys.specs` would supply stubs.
 
 ## Build
 
+The ST tools are not on PATH, so use full paths. Point `-data` at a scratch workspace if the CubeIDE GUI is open.
+
 ```
-stm32cubeide.exe --launcher.suppressErrors -nosplash -application org.eclipse.cdt.managedbuilder.core.headlessbuild -import D:\Workspace\STM32H7\h7_blinky -cleanBuild h7_blinky/Debug
+"C:\ST\STM32CubeIDE_1.17.0\STM32CubeIDE\stm32cubeidec.exe" --launcher.suppressErrors -nosplash -application org.eclipse.cdt.managedbuilder.core.headlessbuild -data <scratch>\ws -import D:\Workspace\STM32H7\h7_blinky -cleanBuild h7_blinky/Debug
 ```
 
-Output: `Debug/h7_blinky.elf`
+Output: `Debug/h7_blinky.elf` (Debug build: 7,988 B text, 28 B data, 1,572 B bss).
 
 ## Flash
 
+`STM32_Programmer_CLI.exe` ships inside the CubeIDE plugins folder (`plugins\com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.*\tools\bin\`):
+
 ```
-STM32_Programmer_CLI.exe -c port=SWD -w Debug/h7_blinky.elf 0x08000000 -v -rst
+STM32_Programmer_CLI.exe -c port=SWD -w Debug/h7_blinky.elf -v -rst
 ```
 
 ## Static analysis
 
-The work is split between two tools because native cppcheck 2.21 has no MISRA addon.
+Two tools are used, because native cppcheck 2.21 has no MISRA addon. See [CLAUDE.md](CLAUDE.md) for the exact commands.
 
-Native checks:
-```
-cppcheck --enable=all --inconclusive -ICore/Inc -IDrivers/CMSIS/Include -IDrivers/CMSIS/Device/ST/STM32H7xx/Include -IDrivers/STM32H7xx_HAL_Driver/Inc -DSTM32H723xx -DUSE_HAL_DRIVER -D__GNUC__=13 Core/Src Core/Inc
-```
-
-MISRA (MPLAB X bundled cppcheck 2.11.1):
-```
-"C:\Program Files\Microchip\MPLABX\v6.30\mplab_platform\bin\cppcheck\cppcheck.exe" --addon=misra -ICore/Inc -IDrivers/CMSIS/Include -IDrivers/CMSIS/Device/ST/STM32H7xx/Include -IDrivers/STM32H7xx_HAL_Driver/Inc -DSTM32H723xx -DUSE_HAL_DRIVER -D__GNUC__=13 Core/Src Core/Inc
-```
+- **Native cppcheck 2.21:** general bug and style checks on `Core/`.
+- **MISRA C:2025:** run [tools/misra_check.sh](tools/misra_check.sh) from Git Bash. It uses MPLAB X's bundled cppcheck 2.11.1 and `misra.exe` (`--addon=misra` silently checks nothing in that install).
+  - It needs `docs/misra-c-2025-rule-texts.txt`, generated from your licensed copy of the standard by [tools/misra_rule_texts.py](tools/misra_rule_texts.py).
+  - The PDF and the generated file are gitignored and must not be committed.
+  - The checker was written for MISRA C:2012. Rules it cannot check are listed in CLAUDE.md for manual review.
 
 ---
 
@@ -169,3 +170,4 @@ Source: datasheet DS13313 Rev 5 ([docs/stm32h723zg.pdf](docs/stm32h723zg.pdf)). 
 | [docs/pm0253-stm32h7-series-cortexm7.pdf](docs/pm0253-stm32h7-series-cortexm7.pdf) | Programming manual: Cortex-M7 core, NVIC, instruction set |
 | [docs/stm32h723zg.pdf](docs/stm32h723zg.pdf) | Datasheet: electrical characteristics, pinout, package |
 | [docs/um3252-stm32h7-series.pdf](docs/um3252-stm32h7-series.pdf) | Nucleo board user manual: board wiring, jumpers |
+| `docs/MISRA-C-2025.pdf` | MISRA C:2025: licensed copy, local only (not in git) |

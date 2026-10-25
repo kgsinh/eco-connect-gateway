@@ -21,8 +21,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **Raising the clock later:** set VOS first, then flash wait states, then switch SYSCLK (RM0468 Table 16). Previously verified PLL config: HSI/M4 = 16 MHz ref, ×N12 = 192 MHz VCO (wide), P/1 = 192 MHz CPU, AHB /2 = 96 MHz, APB /2 = 48 MHz at VOS2 with 1 WS. PLL1 DIVP does not allow odd values except 1.
 - **Supply config (PWR_CR3) is write-once after power-on.** Writing it clears SCUEN. The supply *is* configured: the startup file calls `ExitRun0Mode()` (system_stm32h7xx.c) before `SystemInit()`. With `USE_PWR_LDO_SUPPLY` defined in the build, it sets LDOEN and waits for ACTVOSRDY. Don't remove that define.
 - **The main loop uses `while(1)`.** That breaks MISRA Rule 14.4 (non-boolean controlling expression); `for (;;)` passes. It was kept deliberately by the user, so expect it in MISRA output.
-- **VS Code IntelliSense shows false errors** ("FLASH is undefined", etc.): `.vscode/` is missing `STM32H723xx`, `USE_HAL_DRIVER` and the include paths. The real build is clean.
-- **`.vscode/` is untracked** and was not created by Claude; leave it alone unless asked.
+- **`.vscode/` is gitignored** (machine-specific paths). The C/C++ Runner extension auto-created it, set up for host x64 gcc, and that caused false IntelliSense errors. `c_cpp_properties.json` was then rewritten for CubeIDE's arm-none-eabi-gcc with the project include paths and defines. Its `compilerPath` contains the CubeIDE toolchain plugin version, so update it when CubeIDE updates. The extension may recreate or overwrite these files.
 
 ## Static analysis status (last run 2026-10-25)
 
@@ -33,7 +32,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 
 ## Open items
 
-- Optional: fix the `.vscode` IntelliSense config.
+- None.
 
 ## Session log
 

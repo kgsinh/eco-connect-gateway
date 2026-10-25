@@ -3,6 +3,7 @@ Debug/
 Release/
 
 # IDE / OS clutter
+.vscode/
 *.bak
 *.tmp
 .metadata/

@@ -11,9 +11,7 @@
 extern "C" {
 #endif
 
-#include "stm32h7xx_hal.h"   /* HAL_Delay / HAL_IncTick; also pulls in CMSIS */
-
-void Error_Handler(void);
+#include "stm32h7xx_hal.h"   /* needed by the CubeMX IRQ/MSP files; also pulls in CMSIS */
 
 #ifdef __cplusplus
 }

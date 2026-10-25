@@ -24,9 +24,15 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **VS Code IntelliSense shows false errors** ("FLASH is undefined", etc.): `.vscode/` is missing `STM32H723xx`, `USE_HAL_DRIVER` and the include paths. The real build is clean.
 - **`.vscode/` is untracked** and was not created by Claude; leave it alone unless asked.
 
+## Static analysis status (last run 2026-10-25)
+
+- cppcheck: clean except `staticFunction` on `Tick_GetMs`. This is a deliberate deviation: it is the module's public time API, and the only reason it is unused outside systick.c is that the app doesn't need it yet.
+- MISRA (main.c, led.c, systick.c): only Rule 11.4 ×17 (CMSIS `GPIOB->` / `RCC->` / `SysTick->` peripheral-address casts). This is a documented deviation inherent to register access, the same as the baseline.
+- MISRA 14.4: `while(1)` in main.c violates it, but **the tool does not detect it**. Kept at the user's request; this is a manual deviation.
+- `Tick_DelayMs` reads the counter through `Tick_GetMs()`. Reading `s_tick_ms` directly triggered a cppcheck `duplicateExpression` false positive, because cppcheck doesn't model the ISR updating a volatile.
+
 ## Open items
 
-- MISRA / cppcheck not yet run on `led.c`, `systick.c` or the new `main.c`.
 - Optional: fix the `.vscode` IntelliSense config.
 
 ## Session log
@@ -38,5 +44,5 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - Blink half-period tried at 2000 ms; the user set it back to 1000 ms. Tested on the board with `HAL_Delay`: works.
 - Flash 1 WS is an optimisation, not a requirement: 7 WS is correct at any clock. Removed at the user's request; flash runs at the 7 WS default.
 - Replaced `SysTick_Config()`/`HAL_Delay()` with our own register-level `systick.c`. Builds clean; tested on the board by the user: the 1 s blink works.
-- Committed as 977cbb1 on branch `cmsis-led-systick` (not yet merged to main).
+- Ran cppcheck + MISRA on the new code. Made `Error_Handler` static (removed from main.h), and routed `Tick_DelayMs` through `Tick_GetMs()`. Merged into main and pushed.
 - Removed `SysTick_Handler` from `stm32h7xx_it.c`/`.h`; stripped the pin defines and BSP include from `main.h`.

@@ -47,9 +47,9 @@ uint32_t Tick_GetMs(void)
   */
 void Tick_DelayMs(uint32_t ms)
 {
-  const uint32_t start = s_tick_ms;
+  const uint32_t start = Tick_GetMs();
 
-  while ((s_tick_ms - start) < ms)
+  while ((Tick_GetMs() - start) < ms)
   {
   }
 }

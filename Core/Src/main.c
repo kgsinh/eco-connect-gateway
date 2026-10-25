@@ -11,6 +11,8 @@
 
 #define LED_BLINK_HALF_PERIOD_MS  (1000U)
 
+static void Error_Handler(void);
+
 int main(void)
 {
   SystemCoreClockUpdate();
@@ -28,7 +30,7 @@ int main(void)
   }
 }
 
-void Error_Handler(void)
+static void Error_Handler(void)
 {
   __disable_irq();
   for (;;)

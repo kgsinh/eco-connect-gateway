@@ -1,5 +1,8 @@
 # Project: Nucleo H723ZG — Blinky (workflow pilot)
 
+## Project notes
+Read NOTES.md at the start of every session: it holds the current architecture, gotchas and open items. Keep it up to date as you work. When something worth remembering comes up (a "things to know" item, a decision, a deviation, an open item, what was tested on hardware), add it there in the same session. Add a dated entry to its session log and update the sections above it so they always describe the current state. Keep it terse.
+
 ## Hardware
 - Board: NUCLEO-H723ZG (STM32H723ZG, Cortex-M7)
 - Onboard User LED: PB0

@@ -6,21 +6,22 @@ Minimal STM32CubeIDE project for the **NUCLEO-H723ZG** board. It serves as a wor
 
 | Item | State |
 |---|---|
-| MPU, HAL, clock and GPIO init | Done (CubeMX-generated) |
-| User LED (PB0, green) | Switched **on** via BSP at startup |
-| Blink loop | **Not implemented yet** — `while (1)` in `main()` is empty |
+| Application code | Hand-written CMSIS register access (`main.c`, `led.c`, `systick.c`); HAL/BSP sources kept but unused |
+| User LED (PB0, green) | Blinks: 1 s on / 1 s off, CMSIS LED driver |
+| Time base | 1 ms SysTick with own delay (`systick.c`) |
 
-### Clock configuration (as generated)
+Do not regenerate code from `h7_blinky.ioc`; it would overwrite `main.c`. See NOTES.md for details and gotchas.
+
+### Clock configuration
+
+Reset default left by `SystemInit()`; no PLL.
 
 | Clock | Source / setting | Frequency |
 |---|---|---|
 | HSI | Internal RC | 64 MHz |
-| PLL1 | HSI / M=4 × N=12 / P=1 | — |
-| SYSCLK | PLL1P | 192 MHz |
-| HCLK (AHB) | SYSCLK / 2 | 96 MHz |
-| APB1/2/3/4 | HCLK / 2 | 48 MHz |
+| SYSCLK / CPU / HCLK / APB1-4 | HSI, all prescalers /1 | 64 MHz |
 
-Supply: LDO, voltage scale 2, flash latency 1 WS.
+Supply: LDO (set in `ExitRun0Mode()`), voltage scale 3, flash latency 7 WS (reset default).
 
 ## Project layout
 

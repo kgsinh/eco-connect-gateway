@@ -37,5 +37,6 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - Flash latency lowered from 7 WS to 1 WS.
 - Blink half-period tried at 2000 ms; the user set it back to 1000 ms. Tested on the board with `HAL_Delay`: works.
 - Flash 1 WS is an optimisation, not a requirement: 7 WS is correct at any clock. Removed at the user's request; flash runs at the 7 WS default.
-- Replaced `SysTick_Config()`/`HAL_Delay()` with our own register-level `systick.c`. It builds clean; **not yet tested on the board.**
+- Replaced `SysTick_Config()`/`HAL_Delay()` with our own register-level `systick.c`. Builds clean; tested on the board by the user: the 1 s blink works.
+- Committed as 977cbb1 on branch `cmsis-led-systick` (not yet merged to main).
 - Removed `SysTick_Handler` from `stm32h7xx_it.c`/`.h`; stripped the pin defines and BSP include from `main.h`.

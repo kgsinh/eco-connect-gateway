@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    led.h
-  * @brief   User LED (LD1, PB0) driver - CMSIS register access.
+  * @brief   User LED (LD1, PB0) driver - HAL GPIO.
   ******************************************************************************
   */
 #ifndef LED_H

@@ -4,44 +4,36 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 
 ## Current architecture
 
-- `main.c` is hand-written CMSIS. No HAL calls remain in application code.
-- Clock: reset default left by `SystemInit()`. HSI 64 MHz, all prescalers /1, no PLL, LDO supply, VOS3.
-- Flash: reset default 7 WS, left as `SystemInit()` sets it. That is safe at any clock; 1 WS (WRHIGHFREQ 01) would be enough for 64 MHz at VOS3 (RM0468 Table 16) and is purely a speed-up.
-- `led.c` / `led.h`: PB0 (LD1) push-pull output, CMSIS registers. On/Off are single BSRR writes; Toggle reads ODR, then writes BSRR.
-- `systick.c` / `systick.h`: 1 ms SysTick on the processor clock (lowest priority), with its own `volatile` ms counter, `Tick_GetMs()` and `Tick_DelayMs()`. The delay is wrap-safe and lasts between ms−1 and ms.
-- No MPU config, no power config, no `HAL_Init()`, no `MX_GPIO_Init()`, no BSP calls.
-- `Drivers/` (HAL, BSP, CMSIS) is untouched and still compiled; `--gc-sections` drops what is unused.
+- **HAL only, CubeMX workflow.** `main.c`, `main.h`, `stm32h7xx_it.c/.h` and `stm32h7xx_hal_msp.c` are CubeMX-generated; our code lives only in `USER CODE` blocks and in `led.c`/`led.h`.
+- Clock (from `.ioc`): HSI 64 MHz → PLL1 (M4, N12, P1) = 192 MHz SYSCLK/CPU, AHB /2 = 96 MHz, APB1–4 /2 = 48 MHz. VOS2, flash 1 WS, LDO supply.
+- MPU: CubeMX region 0 makes 0x6000_0000–0xDFFF_FFFF no-access/XN (blocks M7 speculative reads to external-memory space).
+- Time base: HAL SysTick 1 ms (`HAL_Init` → `HAL_InitTick`, `SysTick_Handler` → `HAL_IncTick`). The delay is `HAL_Delay()`.
+- `led.c` / `led.h`: PB0 (LD1) via `HAL_GPIO_Init` / `WritePin` / `TogglePin`. `LED_Init()` is called in `USER CODE 2`.
+- Main loop (`USER CODE 3`): `LED_Toggle()` + `HAL_Delay(LED_BLINK_HALF_PERIOD_MS)` (1000 ms).
 
 ## Things to know
 
-- **Do not regenerate code from `h7_blinky.ioc`.** main.c no longer has `USER CODE` blocks, so CubeMX would overwrite it, and it would add `SysTick_Handler` back to `stm32h7xx_it.c` (duplicate-definition link error).
-- **HAL tick is dead.** `SysTick_Handler` lives in `systick.c` and does not call `HAL_IncTick()`, so `HAL_GetTick()` never changes and any HAL call with a timeout hangs. If a HAL driver is brought in, add `HAL_IncTick()` to our handler.
-- **`HAL_MspInit()` no longer runs** (only `HAL_Init()` called it). The SYSCFG clock is therefore not enabled; turn it on if EXTI/SYSCFG is ever used.
-- **MPU removed.** That is fine while caches are off and no external memory is used. If the I/D cache, FMC or OCTOSPI is enabled, restore the background region (0x6000_0000–0xDFFF_FFFF no-access, XN) to stop M7 speculative reads there.
-- **Raising the clock later:** set VOS first, then flash wait states, then switch SYSCLK (RM0468 Table 16). Previously verified PLL config: HSI/M4 = 16 MHz ref, ×N12 = 192 MHz VCO (wide), P/1 = 192 MHz CPU, AHB /2 = 96 MHz, APB /2 = 48 MHz at VOS2 with 1 WS. PLL1 DIVP does not allow odd values except 1.
-- **Supply config (PWR_CR3) is write-once after power-on.** Writing it clears SCUEN. The supply *is* configured: the startup file calls `ExitRun0Mode()` (system_stm32h7xx.c) before `SystemInit()`. With `USE_PWR_LDO_SUPPLY` defined in the build, it sets LDOEN and waits for ACTVOSRDY. Don't remove that define.
-- **The main loop uses `while(1)`.** That breaks MISRA Rule 14.4 (non-boolean controlling expression); `for (;;)` passes. It was kept deliberately by the user, so expect it in MISRA output.
-- **`.vscode/` is gitignored** (machine-specific paths). The C/C++ Runner extension auto-created it, set up for host x64 gcc, and that caused false IntelliSense errors. `c_cpp_properties.json` was then rewritten for CubeIDE's arm-none-eabi-gcc with the project include paths and defines. Its `compilerPath` contains the CubeIDE toolchain plugin version, so update it when CubeIDE updates. The extension may recreate or overwrite these files.
+- **The BSP LED must be disabled in CubeMX.** The `.ioc` still has `NUCLEO-H723ZG.LD1=true`. The generated `BSP_LED_Init(LED_GREEN)` call (outside USER CODE) was removed from main.c by hand, because led.c owns PB0. Until LD1 is unticked in CubeMX (Pinout & Configuration → Middleware and Software Packs / BSP → NUCLEO-H723ZG → untick LD1), regenerating will put `BSP_LED_Init` back. That is harmless (same pin config) but duplicates init. Don't hand-edit the `.ioc` ("do not modify" header).
+- **Supply config:** the startup file calls `ExitRun0Mode()` (system_stm32h7xx.c) before `SystemInit()`, which selects the LDO because `USE_PWR_LDO_SUPPLY` is defined; `HAL_PWREx_ConfigSupply()` then confirms it. PWR_CR3 is write-once after power-on. Don't remove that define.
+- **PLL1 DIVP** does not allow odd values except 1.
+- **`.vscode/` is gitignored** (machine-specific; created by the C/C++ Runner extension). `c_cpp_properties.json` is the user's own config. If false IntelliSense errors appear, point `compilerPath` at CubeIDE's arm-none-eabi-gcc with `intelliSenseMode` `gcc-arm`.
+- **History:** a full-CMSIS version (own SysTick driver, 64 MHz HSI) existed in commits 977cbb1–14b177b and was tested on the board. Switched to HAL-only by user decision.
 
 ## Static analysis status (last run 2026-10-25)
 
-- cppcheck: clean except `staticFunction` on `Tick_GetMs`. This is a deliberate deviation: it is the module's public time API, and the only reason it is unused outside systick.c is that the app doesn't need it yet.
-- MISRA (main.c, led.c, systick.c): only Rule 11.4 ×17 (CMSIS `GPIOB->` / `RCC->` / `SysTick->` peripheral-address casts). This is a documented deviation inherent to register access, the same as the baseline.
-- MISRA 14.4: `while(1)` in main.c violates it, but **the tool does not detect it**. Kept at the user's request; this is a manual deviation.
-- `Tick_DelayMs` reads the counter through `Tick_GetMs()`. Reading `s_tick_ms` directly triggered a cppcheck `duplicateExpression` false positive, because cppcheck doesn't model the ISR updating a volatile.
+- cppcheck: only `staticFunction` on `Error_Handler`, a deviation: it is CubeMX-generated, declared in main.h by convention so generated files can call it.
+- MISRA: only Rule 11.4 ×55 (baseline 49 plus 6 in led.c). `GPIOB` / `__HAL_RCC_*` macros expand to peripheral-address casts; this is a documented deviation. Rule 12.3 ×6 is in vendor system_stm32h7xx.c (baseline).
+- Generated `while (1)` loops violate MISRA 14.4, but the tool doesn't flag them. They are generated code, so they're left as is.
 
 ## Open items
 
-- None.
+- Untick LD1 (BSP LED) in CubeMX so regeneration matches the code (see above).
+- HAL version not yet tested on the board.
 
 ## Session log
 
+### 2026-10-25 (later)
+- Switched from CMSIS to HAL-only at the user's request. Restored the CubeMX-generated main.c/main.h/stm32h7xx_it.c/.h from 951e365 (192 MHz PLL, MPU, `HAL_Init`, `HAL_IncTick`). Deleted systick.c/.h. Rewrote led.c with HAL GPIO; hooked it into `USER CODE` blocks; removed the generated BSP LED init/on calls. CLAUDE.md coding standard is now HAL only + CubeMX workflow.
+
 ### 2026-10-24 / 25
-- Added a CMSIS LED driver (`led.c`/`led.h`) for PB0.
-- Rewrote `main.c` in CMSIS: first a full PLL to 192 MHz setup with MPU and power config, then simplified at the user's request to the default HSI 64 MHz with MPU and power config removed.
-- Flash latency lowered from 7 WS to 1 WS.
-- Blink half-period tried at 2000 ms; the user set it back to 1000 ms. Tested on the board with `HAL_Delay`: works.
-- Flash 1 WS is an optimisation, not a requirement: 7 WS is correct at any clock. Removed at the user's request; flash runs at the 7 WS default.
-- Replaced `SysTick_Config()`/`HAL_Delay()` with our own register-level `systick.c`. Builds clean; tested on the board by the user: the 1 s blink works.
-- Ran cppcheck + MISRA on the new code. Made `Error_Handler` static (removed from main.h), and routed `Tick_DelayMs` through `Tick_GetMs()`. Merged into main and pushed.
-- Removed `SysTick_Handler` from `stm32h7xx_it.c`/`.h`; stripped the pin defines and BSP include from `main.h`.
+- Built a CMSIS-only version: register-level LED driver, own SysTick delay, 64 MHz HSI default clock (PLL, MPU, power config and flash wait tweak removed). Tested on the board. Ran cppcheck + MISRA and fixed the findings. `.vscode/` gitignored. Superseded by the HAL switch above.

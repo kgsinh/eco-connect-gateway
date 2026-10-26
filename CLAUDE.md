@@ -8,8 +8,8 @@ Read NOTES.md at the start of every session: it holds the current architecture, 
 - Onboard User LED: PB0
 
 ## Coding standard
-- Mixed HAL/CMSIS — no fixed boundary. Use HAL where it doesn't obscure what's happening; use CMSIS register access where direct control matters or HAL would hide something worth being explicit about.
-- When the choice isn't obvious, state which was picked and why.
+- HAL only. Application code uses STM32 HAL (and CubeMX-generated init); no direct CMSIS register access (`GPIOB->ODR`, `RCC->...`, `SysTick->...`) in our code. CMSIS stays in the project because HAL is built on it. If a task seems to need register access, discuss it first instead of adding it.
+- CubeMX workflow: `h7_blinky.ioc` is the source of truth for clocks, pins and peripheral init. Our code goes only inside `/* USER CODE BEGIN/END */` blocks in generated files, or in our own files (e.g. led.c), so regeneration keeps it.
 - MISRA C:2025 mandatory + required rules apply regardless of layer used.
 - No dynamic memory allocation (malloc/free).
 

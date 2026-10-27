@@ -12,7 +12,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - Main loop: 250 ms `k_msleep` tick; LD3 every tick, LD2 every 2nd, LD1 every 4th.
 - `boards/nucleo_h723zg.overlay` disables `timers12`, `pwm12` and `/pwmleds`, so the Zephyr PWM driver doesn't claim PB14.
 - Clock (upstream board DTS): HSE 8 MHz (ST-Link MCO, bypass) → PLL1 550 MHz CPU, HCLK 275 MHz, APB 137.5 MHz. Console: USART3 (ST-Link VCOM).
-- Build size: 21,168 B flash, 4,608 B RAM.
+- Build size: 21,168 B flash, 4,608 B RAM. Tested on the board (2026-10-27).
 
 ## Things to know
 
@@ -33,7 +33,6 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 
 ## Open items
 
-- Flash and test the three-LED app on the board.
 - Fix the Zephyr SDK permissions (see Things to know), or decide to stay on gnuarmemb.
 - Adapt the cppcheck and MISRA commands/script to `src/` + Zephyr include paths (+ `build/zephyr/include/generated`), then run them.
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
@@ -42,7 +41,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 
 ### 2026-10-27 (Zephyr integration)
 - User decision: one project with Zephyr owning the chip, plus HAL and CMSIS usable inside it. Removed the CubeIDE project (Core/, Drivers/, .ioc, .cproject, .project, .settings/, .mxproject, linker scripts, launch file). Moved the Zephyr app to the repo root.
-- Demo: LD1 via Zephyr, LD2 via HAL (app Kconfig selects USE_STM32_HAL_GPIO), LD3 via CMSIS (overlay frees PB14 from TIM12 PWM). Built with gnuarmemb + CubeIDE GCC 14.3: no warnings in our code; verified the overlay in zephyr.dts and the HAL/app symbols in the ELF. Not flashed yet.
+- Demo: LD1 via Zephyr, LD2 via HAL (app Kconfig selects USE_STM32_HAL_GPIO), LD3 via CMSIS (overlay frees PB14 from TIM12 PWM). Built with gnuarmemb + CubeIDE GCC 14.3: no warnings in our code; verified the overlay in zephyr.dts and the HAL/app symbols in the ELF. Flashed and tested on the board by the user: all three LEDs blink at their rates.
 - Rewrote CLAUDE.md (architecture, layer-mixing rules, west build/flash), README (and fixed its encoding), NOTES.
 
 ### 2026-10-27 (Zephyr, first try)

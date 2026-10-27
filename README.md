@@ -166,6 +166,8 @@ Source: datasheet DS13313 Rev 5 ([docs/stm32h723zg.pdf](docs/stm32h723zg.pdf)). 
 
 ## Reference documents
 
+Not stored in git (`docs/*.pdf` is gitignored). Download the ST documents from st.com by document number (RM0468, PM0253, DS13313, UM3252) and save them under `docs/` with the file names below; CLAUDE.md refers to them by these paths.
+
 | File | Contents |
 |---|---|
 | [docs/rm0468.pdf](docs/rm0468.pdf) | Reference manual: peripherals, registers, memory map |

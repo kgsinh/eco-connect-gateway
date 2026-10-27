@@ -10,6 +10,9 @@ Release/
 Thumbs.db
 .DS_Store
 
+# Reference PDFs (ST manuals, MISRA) are local only; download them, don't commit
+docs/*.pdf
+
 # MISRA C standard is licensed to one person; never commit it or text extracted from it
 docs/MISRA-*.pdf
 docs/misra-*-rule-texts.txt

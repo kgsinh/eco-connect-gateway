@@ -17,6 +17,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **Supply config:** the startup file calls `ExitRun0Mode()` (system_stm32h7xx.c) before `SystemInit()`, which selects the LDO because `USE_PWR_LDO_SUPPLY` is defined; `HAL_PWREx_ConfigSupply()` then confirms it. PWR_CR3 is write-once after power-on. Don't remove that define.
 - **PLL1 DIVP** does not allow odd values except 1.
 - **`.vscode/` is gitignored** (machine-specific; created by the C/C++ Runner extension). `c_cpp_properties.json` is the user's own config. If false IntelliSense errors appear, point `compilerPath` at CubeIDE's arm-none-eabi-gcc with `intelliSenseMode` `gcc-arm`.
+- **`docs/*.pdf` is gitignored.** The ST manuals were untracked on 2026-10-27; local copies are kept, and README says where to download them. They are still in the initial commit (951e365) on GitHub unless history is rewritten.
 - **History:** a full-CMSIS version (own SysTick driver, 64 MHz HSI) existed in commits 977cbb1–14b177b and was tested on the board. Switched to HAL-only by user decision.
 
 ## Static analysis status (last run 2026-10-25)
@@ -31,6 +32,9 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - HAL version not yet tested on the board.
 
 ## Session log
+
+### 2026-10-27
+- Untracked the 4 ST PDFs in docs/ (~74 MB) and gitignored `docs/*.pdf`. README notes they must be downloaded. History purge pending the user's decision.
 
 ### 2026-10-25 (later)
 - Switched from CMSIS to HAL-only at the user's request. Restored the CubeMX-generated main.c/main.h/stm32h7xx_it.c/.h from 951e365 (192 MHz PLL, MPU, `HAL_Init`, `HAL_IncTick`). Deleted systick.c/.h. Rewrote led.c with HAL GPIO; hooked it into `USER CODE` blocks; removed the generated BSP LED init/on calls. CLAUDE.md coding standard is now HAL only + CubeMX workflow.

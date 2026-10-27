@@ -33,19 +33,27 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **Python on Windows defaults to cp1252.** Always pass `encoding="utf-8"` when editing repo files from Python; an earlier README edit got mis-encoded this way (fixed 2026-10-27).
 - **`.vscode/` and `docs/*.pdf` are gitignored.** The ST PDFs were purged from history on 2026-10-27 (filter-branch + force-push), so commit IDs before that date changed. README lists the download names.
 
-## Static analysis status
+## Static analysis status (last run 2026-10-27)
 
-- Not run on the Zephyr code yet. `tools/misra_check.sh` and the cppcheck command still assume the old `Core/` layout and HAL include paths.
+- Setup reworked for Zephyr: `tools/analysis_flags.py` (flags from build/compile_commands.json + generated prelude.h), `tools/cppcheck_check.sh`, `tools/misra_check.sh` (cppcheck 2.21 dumps + official 2.21.0 misra.py in `D:\Workspace\cppcheck-addons-2.21.0`, outside the repo), `tools/misra_filter.py` + `tools/misra_deviations.txt`. Details in CLAUDE.md.
+- cppcheck: no findings in src/. 24 dropped as Zephyr `LOG_*` macro expansion (invalidPointerCast, knownConditionTrueFalse).
+- MISRA: no findings outside deviations. D1 11.4 register access (15), D2 `LOG_*` macro expansion (153), D3 `NET_EVENT_*` macro 10.1/10.4 (4), D4 misra.py 7.3 regex false positive on `gpio.Pull` (1). Fixed in our code: 8.9 ×2 (`ld1` in main.c and `ipv4_cb` in app_net.c moved to block-scope statics).
+- The old MPLAB 2.11 setup silently "passed" main.c/app_net.c: its preprocessor failed on Zephyr macros and produced an empty dump. misra_check.sh now rejects dumps under 1 MB.
+- `while (true)` in main.c is essentially Boolean, so it satisfies Rule 14.4.
 
 ## Open items
 
 - Test Ethernet via a router (DHCP lease, `net ping <gateway>`); the direct-PC static path is tested.
 - Download UM2407 (Nucleo-144 board manual) into docs/.
 - Fix the Zephyr SDK permissions (see Things to know), or decide to stay on gnuarmemb.
-- Adapt the cppcheck and MISRA commands/script to `src/` + Zephyr include paths (+ `build/zephyr/include/generated`), then run them.
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
 
 ## Session log
+
+### 2026-10-27 (static analysis rework)
+- Reworked static analysis for the Zephyr layout. MPLAB's cppcheck 2.11 + misra.exe can't handle Zephyr headers (silent empty dumps), so with the user's approval switched MISRA to the official cppcheck 2.21.0 misra.py addon, downloaded to `D:\Workspace\cppcheck-addons-2.21.0`. I reviewed the code first: it only reads dumps, and its one subprocess call is for a premium addon that isn't present.
+- Worked around these cppcheck issues: CRLF in flags, 3+ `--include`, GCC register binding, 2.11 DT macro expansion. Found a misra.py 2.21 rule 7.3 regex bug (`Pull`).
+- Fixed 2× Rule 8.9. Everything else is a documented deviation (tools/misra_deviations.txt). Rebuilt OK (147,448 B flash); not reflashed, since the change is only declaration scope.
 
 ### 2026-10-27 (docs refresh)
 - Brought README (Ethernet static IP + PC setup, console how-to, build size, Kconfig role), CLAUDE.md (Ethernet in Hardware, new Console section) and NOTES (build size) in line with the code.

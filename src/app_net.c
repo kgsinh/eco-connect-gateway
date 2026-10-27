@@ -15,8 +15,6 @@
 
 LOG_MODULE_REGISTER(app_net, LOG_LEVEL_INF);
 
-static struct net_mgmt_event_callback ipv4_cb;
-
 static void ipv4_event_handler(struct net_mgmt_event_callback *cb,
 			       uint64_t mgmt_event, struct net_if *iface)
 {
@@ -75,6 +73,8 @@ static int add_static_ipv4(struct net_if *iface)
 
 int app_net_start(void)
 {
+	/* Static storage: net_mgmt keeps a pointer to it after registration */
+	static struct net_mgmt_event_callback ipv4_cb;
 	struct net_if *iface = net_if_get_default();
 
 	if (iface == NULL) {

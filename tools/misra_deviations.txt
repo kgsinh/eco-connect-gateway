@@ -1,0 +1,14 @@
+# MISRA C:2025 deviations for src/, applied by tools/misra_filter.py.
+#
+# Format: ID | rules | regex | rationale   (fields separated by " | " with spaces)
+#   rules: comma-separated rule numbers as the checker reports them
+#          (2012 numbering, e.g. 11.4), or * for all rules
+#   regex: Python regex matched against the source line of the finding;
+#          the deviation applies only to findings on matching lines.
+# Every deviation is counted in the report. Keep entries narrow, and only for
+# code that comes from outside our sources (Zephyr, STM32 HAL, CMSIS).
+
+D1 | 11.4 | GPIO[A-K]\b|RCC|LED_HAL_PORT | Peripheral access: CMSIS/HAL peripheral macros (GPIOB, RCC, __HAL_RCC_*) cast fixed register addresses to struct pointers. Inherent to register access on any MCU.
+D2 | * | \bLOG_(ERR|WRN|INF|DBG)\( | Zephyr logging macros expand to cbprintf packaging (_Generic, unions, casts, builtins). The findings are in the framework expansion, not in our arguments. Includes a 17.3 report that is a tool artefact (compiler builtins).
+D3 | 10.1,10.4 | \bNET_EVENT_ | Zephyr net_mgmt event codes are built with FIELD_PREP/BIT64 on enum constants inside the macro.
+D4 | 7.3 | \.Pull\b | Tool false positive, not a deviation: misra.py 2.21's 7.3 regex ^(0[xX])?[0-9a-fA-FpP.]+[Uu]*l+[Uu]*$ needs no leading digit, so the identifier `Pull` (HAL GPIO_InitTypeDef member) matches as P + u + ll.

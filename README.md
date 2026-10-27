@@ -47,7 +47,7 @@ src/
   led_cmsis.c/.h    LD3 via CMSIS registers
   app_net.c/.h      Ethernet bring-up, DHCPv4, logs the lease
 docs/               Reference manuals (local only, see below)
-tools/              MISRA check script and rule-text extractor
+tools/              Static analysis scripts, MISRA deviations, rule-text extractor
 ```
 
 ## Mixing Zephyr, HAL and CMSIS
@@ -78,9 +78,15 @@ west flash --cli <CubeIDE>/plugins/com.st.stm32cube.ide.mcu.externaltools.cubepr
 
 ## Static analysis
 
-Two tools, because native cppcheck 2.21 has no MISRA addon: native cppcheck for general checks, and [tools/misra_check.sh](tools/misra_check.sh) for MISRA C:2025 (MPLAB X's bundled cppcheck 2.11.1 + `misra.exe`). The commands still need adapting to the Zephyr layout; see CLAUDE.md.
+Needs a current `west build` (flags come from `build/compile_commands.json`). Only our code in `src/` is reported. From Git Bash:
 
-- The MISRA script needs `docs/misra-c-2025-rule-texts.txt`, generated from your licensed copy of the standard by [tools/misra_rule_texts.py](tools/misra_rule_texts.py). The PDF and the generated file are gitignored and must not be committed.
+```
+tools/cppcheck_check.sh     # native cppcheck 2.21, general checks (~3 min)
+tools/misra_check.sh        # MISRA C:2025 (~7 min)
+```
+
+- MISRA uses the official cppcheck 2.21.0 `misra.py` addon (not shipped with the Windows cppcheck install; see CLAUDE.md for where it lives) and `docs/misra-c-2025-rule-texts.txt`, generated from your licensed copy of the standard by [tools/misra_rule_texts.py](tools/misra_rule_texts.py). The PDF and the generated file are gitignored and must not be committed.
+- Documented deviations (register access, Zephyr/HAL macro expansions, one checker false positive) are in [tools/misra_deviations.txt](tools/misra_deviations.txt) and are counted in every report.
 - The checker was written for MISRA C:2012. Rules it cannot check are listed in CLAUDE.md for manual review.
 
 ## History

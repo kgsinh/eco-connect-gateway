@@ -16,10 +16,9 @@
 
 #define TICK_MS  250
 
-static const struct gpio_dt_spec ld1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-
 int main(void)
 {
+	static const struct gpio_dt_spec ld1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 	uint32_t tick = 0U;
 
 	if (!gpio_is_ready_dt(&ld1)) {

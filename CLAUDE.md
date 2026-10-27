@@ -52,16 +52,23 @@ Check the probe first with `<that exe> -l st-link`.
 ST-Link VCOM (COM5 on this PC; confirm with `Get-CimInstance Win32_PnPEntity | ? Name -match 'COM\d+'`), 115200 8N1. Boot log + Zephyr shell (`uart:~$`). Only one program can hold the port. To read it non-interactively, use pyserial (installed). For interactive use, `python -m serial.tools.miniterm --filter direct COM5 115200`. Without `--filter direct`, miniterm prints the shell's ANSI codes as `␛[..m`.
 
 ## Static analysis
-Run only when explicitly requested. **Needs rework for the Zephyr layout** (open item in NOTES.md): the commands must target src/ and add Zephyr's include paths plus build/zephyr/include/generated. Tool facts that still hold:
+Run only when explicitly requested. Both scripts need a current `west build` (they take include paths, defines and Kconfig from build/compile_commands.json via tools/analysis_flags.py) and report only findings in src/. From the repo root, Git Bash:
 
-- Native cppcheck 2.21 for general checks; MISRA C:2025 via MPLAB X's bundled cppcheck 2.11.1 + misra.exe through tools/misra_check.sh — `cppcheck --addon=misra` is broken in this install: it prints "Did not find addon misra", exits 0 and checks nothing. Script exit: 0 = clean, 1 = violations, 2 = tool error.
+    tools/cppcheck_check.sh     # general checks, ~3 min
+    tools/misra_check.sh        # MISRA C:2025, ~7 min
+    # both: [files...] to limit scope; exit 0 = clean, 1 = findings, 2 = tool/setup error
+
+- Tools: native cppcheck 2.21 (on PATH) for both preprocessing and general checks. MISRA uses the official cppcheck **2.21.0 misra.py addon** (misra.py, cppcheckdata.py, misra_9.py from github.com/danmar/cppcheck tag 2.21.0, GPLv3), run with Python from `D:\Workspace\cppcheck-addons-2.21.0` (outside the repo; override with `MISRA_ADDON_DIR`). The native install ships no addons/.
+- Don't go back to MPLAB X's cppcheck 2.11.1 + misra.exe: its preprocessor can't expand Zephyr macros (`IS_ENABLED`, devicetree `DT_CAT3`) and dumps an empty file for anything that includes the kernel, so it reports "clean" without checking. misra.exe also can't read 2.21 dumps. misra_check.sh refuses dumps under 1 MB for this reason.
+- analysis_flags.py works around cppcheck limits in a generated build/analysis/prelude.h: one forced include (3+ `--include` options lose macros), GCC predefined macros, `__asm__(reg)` erased (GCC register binding in arm-m-switch.h), and `NUM_IRQ_PRIO_BITS` pre-set from the devicetree. It writes LF line endings (Windows CRLF broke the flags).
+- Deviations live in tools/misra_deviations.txt (ID, rules, regex on the source line, rationale). tools/misra_filter.py applies them and prints a count per deviation. Add an entry only for findings that come from Zephyr/HAL/CMSIS macro expansions, never for our own code. cppcheck_check.sh drops invalidPointerCast/knownConditionTrueFalse on `LOG_*` lines (Zephyr logging macro expansion) and prints the count.
 - Rule texts/categories come from docs/misra-c-2025-rule-texts.txt, extracted from the licensed docs/MISRA-C-2025.pdf by tools/misra_rule_texts.py. Both are gitignored: the licence forbids storing copies in a retrieval system. Never commit, push or quote them at length.
 - The addon is written for MISRA C:2012 and reports 2012 numbers. Renumbered in 2025: 21.1→20.15, 21.2→5.10, 11.7→merged into 11.4, 17.6→merged into 17.5. 15.5 is Disapplied in 2025 and is suppressed.
-- Not checked by the tool at all — review manually when the code touches them:
+- Not checked by the tool at all (list derived for the 2.11 addon; the 2.21 addon may cover a few more, so treat it as conservative) — review manually when the code touches them:
   - Mandatory: 7.5 9.1 9.7 12.5 17.4 17.9 18.10 19.1 21.13 21.17 21.18 21.22 22.2 22.4 22.6 22.12 22.14 22.20
   - Required: 1.1 1.3 1.5 2.1 5.3 5.10 6.3 7.6 8.3 8.15 8.18 9.6 11.10 11.11 12.6 13.2 14.3 17.5 17.10 17.13 18.1 18.2 18.3 18.6 18.9 19.3 20.6 20.15 21.23 21.24 21.25 21.26 22.1 22.3 22.11 22.13 22.15 22.16 22.17 22.18 22.19 23.2 23.4 23.6 23.8
   - All directives (Dir x.y).
-- Rule 11.4 on CMSIS peripheral-address casts (`GPIOB->ODR`, also inside HAL macros like `GPIOE`) is inherent to register access — documented deviation. Only analyse our code (src/), not Zephyr or the HAL module.
+- Only analyse our code (src/), not Zephyr or the HAL module.
 
 When requested, fix all findings before returning code. Explain any deviation rather than suppressing silently.
 

@@ -10,7 +10,14 @@ Zephyr application for the **NUCLEO-H723ZG** board that mixes three API layers i
 | LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led_hal.c` | 500 ms |
 | LD3 red | PB14 | CMSIS registers, `src/led_cmsis.c` | 250 ms |
 
-**Ethernet:** on-board RMII Ethernet (LAN8742 PHY) via Zephyr's `eth_stm32_hal` driver. The board gets an IPv4 address by DHCP (printed on the ST-Link VCOM console, 115200 baud) and answers ping. The net shell on the same console has `net iface`, `net ping <ip>` and `net arp`; see `src/app_net.c`.
+**Ethernet** (`src/app_net.c`): on-board RMII Ethernet (LAN8742A PHY) via Zephyr's `eth_stm32_hal` driver. The board answers ping on two IPv4 addresses:
+
+- **Static `192.168.50.2/24`**, for a cable straight to a PC. Set the PC's Ethernet adapter to `192.168.50.1` / `255.255.255.0`, no gateway, then `ping 192.168.50.2`. Change or disable it with `CONFIG_APP_NET_STATIC_IPV4_ADDR` in `prj.conf` (empty = off).
+- **DHCP**, for a router. The leased address is printed on the console.
+
+Tested: 100 Mb full-duplex link, ping from the PC over a direct cable.
+
+**Console:** ST-Link virtual COM port, 115200 8N1. It shows boot logs and the Zephyr shell (`uart:~$`; try `net iface`, `net ping <ip>`, `help`). The shell uses ANSI colour/cursor codes, so use a terminal that understands them: `python -m serial.tools.miniterm --filter direct COMx 115200` or PuTTY. Plain miniterm shows them as `␛[..m`.
 
 See NOTES.md for current state, gotchas and open items, and CLAUDE.md for the rules on mixing layers.
 
@@ -30,7 +37,7 @@ Set by Zephyr from the upstream board devicetree (`boards/st/nucleo_h723zg` in t
 
 ```
 CMakeLists.txt      Zephyr app build file
-Kconfig             App Kconfig: selects STM32Cube HAL/LL modules the app uses
+Kconfig             App Kconfig: selects STM32Cube HAL/LL modules; static IP settings
 prj.conf            App Kconfig settings
 boards/
   nucleo_h723zg.overlay   Devicetree overlay (frees PB14 from TIM12 PWM)
@@ -61,7 +68,7 @@ export GNUARMEMB_TOOLCHAIN_PATH=<CubeIDE>/plugins/com.st.stm32cube.ide.mcu.exter
 west build -p always -b nucleo_h723zg
 ```
 
-Output: `build/zephyr/zephyr.elf` (about 21 KB flash, 4.6 KB RAM).
+Output: `build/zephyr/zephyr.elf` (about 147 KB flash, 34 KB RAM with networking and the shell).
 
 ## Flash
 

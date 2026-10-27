@@ -13,7 +13,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - `boards/nucleo_h723zg.overlay` disables `timers12`, `pwm12` and `/pwmleds`, so the Zephyr PWM driver doesn't claim PB14.
 - Clock (upstream board DTS): HSE 8 MHz (ST-Link MCO, bypass) → PLL1 550 MHz CPU, HCLK 275 MHz, APB 137.5 MHz. Console: USART3 (ST-Link VCOM).
 - LED-only build was 21,168 B flash / 4,608 B RAM and was tested on the board (2026-10-27).
-- **Ethernet + IPv4** (`src/app_net.c`): Zephyr `eth_stm32_hal` driver (HAL ETH API v2, selects USE_STM32_HAL_ETH itself) + generic MII PHY driver for the LAN8742 at MDIO address 0, RMII pins from the board DTS. `app_net_start()` (called from main after LED init) first adds a static address `192.168.50.2/24` (`APP_NET_STATIC_IPV4_ADDR/_NETMASK` in the app Kconfig; empty = off) for a direct PC cable, with the PC set to 192.168.50.1/24. It then starts DHCPv4 without blocking (for router use; `NET_IF_UNICAST_IPV4_ADDR_COUNT=2` so both addresses fit) and logs IP/netmask/gateway/lease on `NET_EVENT_IPV4_ADDR_ADD`. Ping replies come from the IPv4 stack. The net shell is on the console (`net iface`, `net ping`, `net arp`). Build: 146,752 B flash, 33,920 B RAM.
+- **Ethernet + IPv4** (`src/app_net.c`): Zephyr `eth_stm32_hal` driver (HAL ETH API v2, selects USE_STM32_HAL_ETH itself) + generic MII PHY driver for the LAN8742 at MDIO address 0, RMII pins from the board DTS. `app_net_start()` (called from main after LED init) first adds a static address `192.168.50.2/24` (`APP_NET_STATIC_IPV4_ADDR/_NETMASK` in the app Kconfig; empty = off) for a direct PC cable, with the PC set to 192.168.50.1/24. It then starts DHCPv4 without blocking (for router use; `NET_IF_UNICAST_IPV4_ADDR_COUNT=2` so both addresses fit) and logs IP/netmask/gateway/lease on `NET_EVENT_IPV4_ADDR_ADD`. Ping replies come from the IPv4 stack. The net shell is on the console (`net iface`, `net ping`, `net arp`). Build: 147,448 B flash, 33,984 B RAM.
 
 ## Things to know
 
@@ -46,6 +46,9 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
 
 ## Session log
+
+### 2026-10-27 (docs refresh)
+- Brought README (Ethernet static IP + PC setup, console how-to, build size, Kconfig role), CLAUDE.md (Ethernet in Hardware, new Console section) and NOTES (build size) in line with the code.
 
 ### 2026-10-27 (Ethernet)
 - Added Ethernet + DHCPv4 (`src/app_net.c`) and the net shell, plus a static 192.168.50.2/24 address alongside DHCP for a direct PC link (user asked for the best way to cable to a PC); prj.conf has the networking, logging, entropy and shell options. Builds clean with gnuarmemb. Tested on the board, direct cable to the PC (PC 192.168.50.1/24): PHY ID 0x7C131 (LAN8742A) detected, link 100 Mb full duplex, `ping 192.168.50.2` from the PC 4/4 replies <1 ms, TTL 64. DHCP got no lease (expected without a server).

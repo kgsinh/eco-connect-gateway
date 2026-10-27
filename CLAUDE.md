@@ -6,6 +6,7 @@ Read NOTES.md at the start of every session: it holds the current architecture, 
 ## Hardware
 - Board: NUCLEO-H723ZG (STM32H723ZG, Cortex-M7)
 - User LEDs: LD1 green PB0, LD2 yellow PE1, LD3 red PB14. User button PC13. Console: USART3 (ST-Link VCOM).
+- Ethernet: RMII, LAN8742A PHY at MDIO address 0 (pins in the board DTS). DMA buffers in SRAM2 (non-cacheable, reserved by the SoC DTS).
 - Board definition (pins, clocks, console) is upstream: D:\Workspace\zephyr\boards\st\nucleo_h723zg. Read it before changing hardware config; override in boards/nucleo_h723zg.overlay, never edit the upstream tree.
 
 ## Architecture
@@ -46,6 +47,9 @@ STM32CubeProgrammer is bundled inside the CubeIDE plugins (path changes when Cub
     west flash --cli "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.500.202603051304/tools/bin/STM32_Programmer_CLI.exe"
 
 Check the probe first with `<that exe> -l st-link`.
+
+## Console
+ST-Link VCOM (COM5 on this PC; confirm with `Get-CimInstance Win32_PnPEntity | ? Name -match 'COM\d+'`), 115200 8N1. Boot log + Zephyr shell (`uart:~$`). Only one program can hold the port. To read it non-interactively, use pyserial (installed). For interactive use, `python -m serial.tools.miniterm --filter direct COM5 115200`. Without `--filter direct`, miniterm prints the shell's ANSI codes as `␛[..m`.
 
 ## Static analysis
 Run only when explicitly requested. **Needs rework for the Zephyr layout** (open item in NOTES.md): the commands must target src/ and add Zephyr's include paths plus build/zephyr/include/generated. Tool facts that still hold:

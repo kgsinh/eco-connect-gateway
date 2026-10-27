@@ -66,6 +66,7 @@ Located in /docs (gitignored, local only — see README for download names):
 - rm0468.pdf — Reference Manual: peripheral registers, bit definitions, memory map. Use for register-level configuration questions.
 - pm0253-stm32h7-series-cortexm7.pdf — Programming Manual: Cortex-M7 core, NVIC, exceptions, instruction set. Use for interrupt/core-level questions.
 - stm32h723zg.pdf — Datasheet: electrical characteristics, pinout, package. Use for pin/voltage/timing limit questions.
-- um3252-stm32h7-series.pdf — Nucleo board User Manual: board-level pin mapping (LED, button, ST-Link), jumpers. Use to confirm board-specific wiring like the LED pin.
+- um3252-stm32h7-series.pdf — X-CUBE-CLASSB self-test library guide for STM32H7 (IEC 60730 Class B). Not the board manual.
+- Board manual (Nucleo-144 user manual UM2407: jumpers, solder bridges, Ethernet/LED wiring) is not in docs/ yet — download it before relying on board-level wiring details; until then the Zephyr board DTS is the reference.
 - MISRA-C-2025.pdf — MISRA C:2025 (licensed to the user personally; local only). Use for rule rationale and compliant examples.
 Read the relevant document before writing new CMSIS-level code for anything not touched yet this session — don't rely on memory for register addresses or bit definitions. For Zephyr APIs, read the headers/docs in D:\Workspace\zephyr.

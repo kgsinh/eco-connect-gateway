@@ -10,6 +10,8 @@ Zephyr application for the **NUCLEO-H723ZG** board that mixes three API layers i
 | LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led_hal.c` | 500 ms |
 | LD3 red | PB14 | CMSIS registers, `src/led_cmsis.c` | 250 ms |
 
+**Ethernet:** on-board RMII Ethernet (LAN8742 PHY) via Zephyr's `eth_stm32_hal` driver. The board gets an IPv4 address by DHCP (printed on the ST-Link VCOM console, 115200 baud) and answers ping. The net shell on the same console has `net iface`, `net ping <ip>` and `net arp`; see `src/app_net.c`.
+
 See NOTES.md for current state, gotchas and open items, and CLAUDE.md for the rules on mixing layers.
 
 ### Clock configuration
@@ -36,6 +38,7 @@ src/
   main.c            LD1 via Zephyr, main loop
   led_hal.c/.h      LD2 via STM32Cube HAL
   led_cmsis.c/.h    LD3 via CMSIS registers
+  app_net.c/.h      Ethernet bring-up, DHCPv4, logs the lease
 docs/               Reference manuals (local only, see below)
 tools/              MISRA check script and rule-text extractor
 ```
@@ -168,12 +171,13 @@ Source: datasheet DS13313 Rev 5 (`docs/stm32h723zg.pdf`). The datasheet covers t
 
 ## Reference documents
 
-Not stored in git (`docs/*.pdf` is gitignored). Download the ST documents from st.com by document number (RM0468, PM0253, DS13313, UM3252) and save them under `docs/` with the file names below; CLAUDE.md refers to them by these paths.
+Not stored in git (`docs/*.pdf` is gitignored). Download the ST documents from st.com by document number (RM0468, PM0253, DS13313, UM3252; board manual UM2407 recommended) and save them under `docs/` with the file names below; CLAUDE.md refers to them by these paths.
 
 | File | Contents |
 |---|---|
 | `docs/rm0468.pdf` | Reference manual: peripherals, registers, memory map |
 | `docs/pm0253-stm32h7-series-cortexm7.pdf` | Programming manual: Cortex-M7 core, NVIC, instruction set |
 | `docs/stm32h723zg.pdf` | Datasheet: electrical characteristics, pinout, package |
-| `docs/um3252-stm32h7-series.pdf` | Nucleo board user manual: board wiring, jumpers |
+| `docs/um3252-stm32h7-series.pdf` | X-CUBE-CLASSB self-test library guide (IEC 60730 Class B) |
+| (not yet downloaded) UM2407 | Nucleo-144 board user manual: jumpers, solder bridges, board wiring |
 | `docs/MISRA-C-2025.pdf` | MISRA C:2025: licensed copy, local only |

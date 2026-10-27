@@ -12,6 +12,7 @@
 #include <zephyr/drivers/gpio.h>
 #include "led_hal.h"
 #include "led_cmsis.h"
+#include "app_net.h"
 
 #define TICK_MS  250
 
@@ -31,6 +32,9 @@ int main(void)
 
 	led_hal_init();
 	led_cmsis_init();
+
+	/* Non-blocking: the LEDs keep running while DHCP waits for a lease */
+	(void)app_net_start();
 
 	while (true) {
 		led_cmsis_toggle();

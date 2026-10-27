@@ -7,4 +7,15 @@ config APP_STM32_HAL_GPIO
 	default y
 	select USE_STM32_HAL_GPIO
 
+# Static IPv4 address, added alongside DHCP so the board is reachable when
+# cabled straight to a PC (no DHCP server). Empty string disables it.
+
+config APP_NET_STATIC_IPV4_ADDR
+	string "Static IPv4 address (empty = DHCP only)"
+	default "192.168.50.2"
+
+config APP_NET_STATIC_IPV4_NETMASK
+	string "Netmask for the static IPv4 address"
+	default "255.255.255.0"
+
 source "Kconfig.zephyr"

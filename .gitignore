@@ -1,9 +1,13 @@
-# STM32CubeIDE build output
-Debug/
-Release/
+# Zephyr (west) build output
+build/
 
 # IDE / OS clutter
 .vscode/
+# Eclipse/CubeIDE project files (CubeIDE recreates them while the old project is open)
+.project
+.cproject
+.mxproject
+.settings/
 *.bak
 *.tmp
 .metadata/

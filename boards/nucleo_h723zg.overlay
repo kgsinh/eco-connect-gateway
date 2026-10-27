@@ -1,0 +1,18 @@
+/*
+ * PB14 (LD3, red) is driven by CMSIS code in led_cmsis.c. The board DTS
+ * routes it to TIM12_CH1 for a PWM LED, and the Zephyr PWM driver would
+ * claim the pin at boot, so take TIM12/PWM12 and the pwm-leds node away.
+ */
+&timers12 {
+	status = "disabled";
+};
+
+&pwm12 {
+	status = "disabled";
+};
+
+/ {
+	pwmleds {
+		status = "disabled";
+	};
+};

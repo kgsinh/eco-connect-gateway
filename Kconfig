@@ -1,0 +1,10 @@
+# STM32Cube HAL/LL modules are promptless Kconfig symbols (USE_STM32_HAL_*,
+# USE_STM32_LL_*), so prj.conf cannot set them; select them from here.
+# Add one entry per HAL/LL module the app calls directly.
+
+config APP_STM32_HAL_GPIO
+	bool "Application uses STM32Cube HAL GPIO"
+	default y
+	select USE_STM32_HAL_GPIO
+
+source "Kconfig.zephyr"

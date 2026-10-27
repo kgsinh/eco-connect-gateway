@@ -1,85 +1,87 @@
 # h7_blinky — NUCLEO-H723ZG
 
-Minimal STM32CubeIDE project for the **NUCLEO-H723ZG** board. It serves as a workflow pilot: it shows the build, flash and static-analysis flow on a trivial application before real work starts.
+Zephyr application for the **NUCLEO-H723ZG** board that mixes three API layers in one firmware: Zephyr APIs, STM32Cube HAL, and CMSIS register access. It serves as a workflow pilot for build, flash and static analysis before real work starts.
 
 ## Status
 
-| Item | State |
-|---|---|
-| Application code | STM32 HAL, CubeMX workflow; our code in `USER CODE` blocks and `led.c` |
-| User LED (PB0, green) | Blinks: 1 s on / 1 s off, HAL GPIO driver (`led.c`) |
-| Time base | HAL SysTick 1 ms, `HAL_Delay()` |
+| LED | Pin | Driven by | Toggle period |
+|---|---|---|---|
+| LD1 green | PB0 | Zephyr GPIO API (devicetree `led0`), `src/main.c` | 1000 ms |
+| LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led_hal.c` | 500 ms |
+| LD3 red | PB14 | CMSIS registers, `src/led_cmsis.c` | 250 ms |
 
-`h7_blinky.ioc` is the source of truth; regenerating keeps code inside `USER CODE` blocks. See NOTES.md for details and gotchas.
+See NOTES.md for current state, gotchas and open items, and CLAUDE.md for the rules on mixing layers.
 
 ### Clock configuration
 
+Set by Zephyr from the upstream board devicetree (`boards/st/nucleo_h723zg` in the Zephyr tree):
+
 | Clock | Source / setting | Frequency |
 |---|---|---|
-| HSI | Internal RC | 64 MHz |
-| PLL1 | HSI / M=4 � N=12 / P=1 | � |
-| SYSCLK / CPU | PLL1P | 192 MHz |
-| HCLK (AHB) | SYSCLK / 2 | 96 MHz |
-| APB1/2/3/4 | HCLK / 2 | 48 MHz |
-
-Supply: LDO, voltage scale 2, flash latency 1 WS.
+| HSE | 8 MHz from ST-Link MCO (bypass) | 8 MHz |
+| PLL1 | HSE / M=4 × N=275 / P=1 | — |
+| SYSCLK / CPU | PLL1P | 550 MHz |
+| HCLK (AHB) | SYSCLK / 2 | 275 MHz |
+| APB1/2/3/4 | HCLK / 2 | 137.5 MHz |
 
 ## Project layout
 
 ```
-Core/
-  Inc/, Src/        Application, HAL config, interrupt handlers, MSP init
-  Startup/          startup_stm32h723zgtx.s (vector table, reset handler)
-Drivers/
-  CMSIS/            Core + STM32H7xx device headers
-  STM32H7xx_HAL_Driver/
-  BSP/              Nucleo board support (LEDs, button, COM)
-docs/               Reference manual, programming manual, datasheet, board UM
+CMakeLists.txt      Zephyr app build file
+Kconfig             App Kconfig: selects STM32Cube HAL/LL modules the app uses
+prj.conf            App Kconfig settings
+boards/
+  nucleo_h723zg.overlay   Devicetree overlay (frees PB14 from TIM12 PWM)
+src/
+  main.c            LD1 via Zephyr, main loop
+  led_hal.c/.h      LD2 via STM32Cube HAL
+  led_cmsis.c/.h    LD3 via CMSIS registers
+docs/               Reference manuals (local only, see below)
 tools/              MISRA check script and rule-text extractor
-h7_blinky.ioc       STM32CubeMX configuration
-STM32H723ZGTX_FLASH.ld / _RAM.ld   Linker scripts (run from flash / RAM)
 ```
 
-## Coding rules
+## Mixing Zephyr, HAL and CMSIS
 
-- Mixed HAL/CMSIS: HAL where it stays clear, CMSIS register access where direct control matters.
-- MISRA C:2025 mandatory and required rules apply.
-- No dynamic memory allocation, no stdio.
-- Enforced at link time: `syscalls.c`/`sysmem.c` are excluded from the build **and** the linker's "System calls" option is set to *none* (no `nosys.specs`). Any reachable `malloc` or `printf` fails with `undefined reference to _sbrk / _write`. Excluding the files alone is not enough, because `nosys.specs` would supply stubs.
+- Zephyr owns startup, clocks, MPU, SysTick, interrupts and linking. No `HAL_Init()` or `SystemClock_Config()`; `HAL_GetTick()`/`HAL_Delay()` map to the Zephyr kernel.
+- HAL/LL comes from Zephyr's `hal_stm32` module. Enable a module by selecting `USE_STM32_HAL_<X>` from the app `Kconfig` (these symbols can't be set in `prj.conf`).
+- CMSIS device headers come via `<soc.h>`.
+- One owner per peripheral (per pin for GPIO): disable a devicetree node in the overlay when HAL/CMSIS takes it over.
 
 ## Build
 
-The ST tools are not on PATH, so use full paths. Point `-data` at a scratch workspace if the CubeIDE GUI is open.
+Needs the west workspace at `D:\Workspace` (Zephyr 4.4.0). Until the Zephyr SDK is usable, build with CubeIDE's Arm GCC (exact commands in CLAUDE.md):
 
 ```
-"C:\ST\STM32CubeIDE_1.17.0\STM32CubeIDE\stm32cubeidec.exe" --launcher.suppressErrors -nosplash -application org.eclipse.cdt.managedbuilder.core.headlessbuild -data <scratch>\ws -import D:\Workspace\STM32H7\h7_blinky -cleanBuild h7_blinky/Debug
+unset ZEPHYR_SDK_INSTALL_DIR
+export ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb
+export GNUARMEMB_TOOLCHAIN_PATH=<CubeIDE>/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.<ver>/tools
+west build -p always -b nucleo_h723zg
 ```
 
-Output: `Debug/h7_blinky.elf` (Debug build: 7,988 B text, 28 B data, 1,572 B bss).
+Output: `build/zephyr/zephyr.elf` (about 21 KB flash, 4.6 KB RAM).
 
 ## Flash
 
-`STM32_Programmer_CLI.exe` ships inside the CubeIDE plugins folder (`plugins\com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.*\tools\bin\`):
-
 ```
-STM32_Programmer_CLI.exe -c port=SWD -w Debug/h7_blinky.elf -v -rst
+west flash --cli <CubeIDE>/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.<ver>/tools/bin/STM32_Programmer_CLI.exe
 ```
 
 ## Static analysis
 
-Two tools are used, because native cppcheck 2.21 has no MISRA addon. See [CLAUDE.md](CLAUDE.md) for the exact commands.
+Two tools, because native cppcheck 2.21 has no MISRA addon: native cppcheck for general checks, and [tools/misra_check.sh](tools/misra_check.sh) for MISRA C:2025 (MPLAB X's bundled cppcheck 2.11.1 + `misra.exe`). The commands still need adapting to the Zephyr layout; see CLAUDE.md.
 
-- **Native cppcheck 2.21:** general bug and style checks on `Core/`.
-- **MISRA C:2025:** run [tools/misra_check.sh](tools/misra_check.sh) from Git Bash. It uses MPLAB X's bundled cppcheck 2.11.1 and `misra.exe` (`--addon=misra` silently checks nothing in that install).
-  - It needs `docs/misra-c-2025-rule-texts.txt`, generated from your licensed copy of the standard by [tools/misra_rule_texts.py](tools/misra_rule_texts.py).
-  - The PDF and the generated file are gitignored and must not be committed.
-  - The checker was written for MISRA C:2012. Rules it cannot check are listed in CLAUDE.md for manual review.
+- The MISRA script needs `docs/misra-c-2025-rule-texts.txt`, generated from your licensed copy of the standard by [tools/misra_rule_texts.py](tools/misra_rule_texts.py). The PDF and the generated file are gitignored and must not be committed.
+- The checker was written for MISRA C:2012. Rules it cannot check are listed in CLAUDE.md for manual review.
+
+## History
+
+Earlier versions of this repo were an STM32CubeIDE/CubeMX project, first CMSIS-only and then HAL-only. They are in git history before the Zephyr switch.
 
 ---
 
 ## STM32H723ZG — controller features
 
-Source: datasheet DS13313 Rev 5 ([docs/stm32h723zg.pdf](docs/stm32h723zg.pdf)). The datasheet covers the whole STM32H723xE/G family, so "up to" figures are family maximums. The **ZG** part has 1 MB flash, and the Nucleo board uses the **LQFP144** package.
+Source: datasheet DS13313 Rev 5 (`docs/stm32h723zg.pdf`). The datasheet covers the whole STM32H723xE/G family, so "up to" figures are family maximums. The **ZG** part has 1 MB flash, and the Nucleo board uses the **LQFP144** package.
 
 ### Core
 - 32-bit Arm Cortex-M7, up to **550 MHz**, 2778 CoreMark
@@ -170,8 +172,8 @@ Not stored in git (`docs/*.pdf` is gitignored). Download the ST documents from s
 
 | File | Contents |
 |---|---|
-| [docs/rm0468.pdf](docs/rm0468.pdf) | Reference manual: peripherals, registers, memory map |
-| [docs/pm0253-stm32h7-series-cortexm7.pdf](docs/pm0253-stm32h7-series-cortexm7.pdf) | Programming manual: Cortex-M7 core, NVIC, instruction set |
-| [docs/stm32h723zg.pdf](docs/stm32h723zg.pdf) | Datasheet: electrical characteristics, pinout, package |
-| [docs/um3252-stm32h7-series.pdf](docs/um3252-stm32h7-series.pdf) | Nucleo board user manual: board wiring, jumpers |
-| `docs/MISRA-C-2025.pdf` | MISRA C:2025: licensed copy, local only (not in git) |
+| `docs/rm0468.pdf` | Reference manual: peripherals, registers, memory map |
+| `docs/pm0253-stm32h7-series-cortexm7.pdf` | Programming manual: Cortex-M7 core, NVIC, instruction set |
+| `docs/stm32h723zg.pdf` | Datasheet: electrical characteristics, pinout, package |
+| `docs/um3252-stm32h7-series.pdf` | Nucleo board user manual: board wiring, jumpers |
+| `docs/MISRA-C-2025.pdf` | MISRA C:2025: licensed copy, local only |

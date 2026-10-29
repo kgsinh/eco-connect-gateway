@@ -1,0 +1,33 @@
+{
+  // Template: copy to .vscode/tasks.json (.vscode/ is gitignored).
+  // Run with Ctrl+Shift+B or Terminal > Run Task.
+  "version": "2.0.0",
+  "options": {
+    "shell": {
+      "executable": "C:/Program Files/Git/bin/bash.exe",
+      "args": ["-c"]
+    }
+  },
+  "tasks": [
+    {
+      "label": "Zephyr: build (debug)",
+      "type": "shell",
+      "command": "source tools/zephyr_env.sh && west build -p always -b nucleo_h723zg -- -DEXTRA_CONF_FILE=debug.conf",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Zephyr: build (release)",
+      "type": "shell",
+      "command": "source tools/zephyr_env.sh && west build -p always -b nucleo_h723zg",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Zephyr: flash",
+      "type": "shell",
+      "command": "source tools/zephyr_env.sh && west flash --cli \"$STM32_PROGRAMMER_CLI\"",
+      "problemMatcher": []
+    }
+  ]
+}

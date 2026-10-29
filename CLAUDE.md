@@ -32,21 +32,27 @@ Rules for mixing:
 ## Build
 West workspace: D:\Workspace (Zephyr 4.4.0); west finds it automatically from the repo. From the repo root, Git Bash.
 
-The Zephyr SDK (C:\Users\ksrgo\zephyr-sdk-1.0.1) is currently unreadable by the user account (see NOTES.md), and the user env var `ZEPHYR_SDK_INSTALL_DIR` points at it, which forces CMake to look for it. Until that's fixed, build with CubeIDE's Arm GCC via the gnuarmemb toolchain variant:
+The Zephyr SDK (C:\Users\ksrgo\zephyr-sdk-1.0.1) is currently unreadable by the user account (see NOTES.md), and the user env var `ZEPHYR_SDK_INSTALL_DIR` points at it, which forces CMake to look for it. Until that's fixed, build with CubeIDE's Arm GCC via the gnuarmemb toolchain variant. `tools/zephyr_env.sh` sets that up (and `$STM32_PROGRAMMER_CLI`):
 
-    unset ZEPHYR_SDK_INSTALL_DIR
-    export ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb
-    export GNUARMEMB_TOOLCHAIN_PATH="C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools"
-    west build -p always -b nucleo_h723zg
+    source tools/zephyr_env.sh
+    west build -p always -b nucleo_h723zg                                   # release (-Os)
+    west build -p always -b nucleo_h723zg -- -DEXTRA_CONF_FILE=debug.conf  # debug (-Og, asserts, thread info)
 
-Success = memory-usage table and `Generating files from .../zephyr.elf`. Output: build/zephyr/zephyr.elf (build/ is gitignored). The first configure takes ~2 min. The toolchain path changes when CubeIDE updates.
+Success = memory-usage table and `Generating files from .../zephyr.elf`. Output: build/zephyr/zephyr.elf (build/ is gitignored). Both variants use the same build dir, so check which one is in it before flashing (`grep DEBUG_OPTIMIZATIONS build/zephyr/.config`). The first configure takes ~2 min. Toolchain paths in zephyr_env.sh change when CubeIDE updates.
 
 ## Flash
 STM32CubeProgrammer is bundled inside the CubeIDE plugins (path changes when CubeIDE updates):
 
-    west flash --cli "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.500.202603051304/tools/bin/STM32_Programmer_CLI.exe"
+    source tools/zephyr_env.sh
+    west flash --cli "$STM32_PROGRAMMER_CLI"
 
-Check the probe first with `<that exe> -l st-link`.
+Check the probe first with `"$STM32_PROGRAMMER_CLI" -l st-link` ("No ST-Link detected!" = board unplugged).
+
+## Debug
+VS Code + Cortex-Debug (installed) with ST's ST-LINK_gdbserver, arm-none-eabi-gdb and the STM32H723 SVD, all from the CubeIDE install. Committed templates are in tools/vscode/ (`launch.json`, `tasks.json`); the live copies are in .vscode/ (gitignored). Copy them again if .vscode is regenerated. Configs:
+- "Debug (ST-LINK, build + flash, stop at main)": runs the "Zephyr: build (debug)" task, flashes, stops at main.
+- "Attach (ST-LINK, no reset, no flash)": halts the running firmware where it is; the ELF in build/ must match what's flashed.
+Without a debugger: Zephyr prints a fatal-error dump (faulting PC/LR, thread) on the console. Resolve addresses with `arm-none-eabi-addr2line -e build/zephyr/zephyr.elf <addr>` (gdb/addr2line live next to GDB in the CubeIDE toolchain bin). Shell: `kernel threads`, `kernel stacks`, `device list`.
 
 ## Console
 ST-Link VCOM (COM5 on this PC; confirm with `Get-CimInstance Win32_PnPEntity | ? Name -match 'COM\d+'`), 115200 8N1. Boot log + Zephyr shell (`uart:~$`). Only one program can hold the port. To read it non-interactively, use pyserial (installed). For interactive use, `python -m serial.tools.miniterm --filter direct COM5 115200`. Without `--filter direct`, miniterm prints the shell's ANSI codes as `␛[..m`.

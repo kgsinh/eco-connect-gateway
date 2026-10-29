@@ -29,6 +29,8 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **docs/um3252-stm32h7-series.pdf is the X-CUBE-CLASSB self-test library guide, not the board manual.** It was mislabelled in CLAUDE.md/README until 2026-10-27. The Nucleo-144 board manual is UM2407 (not downloaded yet).
 - **Console:** ST-Link VCOM is **COM5** on this PC, 115200 8N1. Use `python -m serial.tools.miniterm --filter direct COM5 115200` (without `--filter direct`, miniterm shows the ANSI colour codes as `␛[..m`) or PuTTY `-serial COM5 -sercfg 115200,8,n,1,N`. The shell prompt is `uart:~$`.
 - **Windows Firewall blocks inbound ping by default**, so `net ping 192.168.50.1` from the board may time out. Test PC → board.
+- **Debugging:** VS Code Cortex-Debug + ST-LINK_gdbserver + CubeIDE GDB + STM32H723 SVD. Templates are in tools/vscode/, the live copies in .vscode/ (the old C/C++ Runner launch.json is kept as .vscode/launch.json.bak). Debug build = `-DEXTRA_CONF_FILE=debug.conf` (-Og, ASSERT, DEBUG_THREAD_INFO, INIT_STACKS): 219,920 B flash vs 147,448 B release. Same build/ dir for both, so check `.config` before flashing.
+- **`tools/zephyr_env.sh`** holds the gnuarmemb toolchain and STM32_Programmer_CLI paths (one place to update when CubeIDE changes).
 - **`west flash` needs `--cli <path>`** because STM32_Programmer_CLI lives in the CubeIDE plugins folder, not on PATH or in Program Files.
 - **Python on Windows defaults to cp1252.** Always pass `encoding="utf-8"` when editing repo files from Python; an earlier README edit got mis-encoded this way (fixed 2026-10-27).
 - **`.vscode/` and `docs/*.pdf` are gitignored.** The ST PDFs were purged from history on 2026-10-27 (filter-branch + force-push), so commit IDs before that date changed. README lists the download names.
@@ -43,12 +45,16 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 
 ## Open items
 
+- First live debug session (F5 → stop at main, step, Peripherals view). The setup is verified offline only: paths exist, GDB resolves main/led_hal_toggle in the debug ELF, and the build task runs. The board was unplugged.
 - Test Ethernet via a router (DHCP lease, `net ping <gateway>`); the direct-PC static path is tested.
 - Download UM2407 (Nucleo-144 board manual) into docs/.
 - Fix the Zephyr SDK permissions (see Things to know), or decide to stay on gnuarmemb.
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
 
 ## Session log
+
+### 2026-10-29 (debugging)
+- Added the debug setup: debug.conf, tools/zephyr_env.sh, tools/vscode/{launch,tasks}.json (installed into .vscode/). Debug build OK (219,920 B). Not tried live: no ST-Link was connected.
 
 ### 2026-10-27 (static analysis rework)
 - Reworked static analysis for the Zephyr layout. MPLAB's cppcheck 2.11 + misra.exe can't handle Zephyr headers (silent empty dumps), so with the user's approval switched MISRA to the official cppcheck 2.21.0 misra.py addon, downloaded to `D:\Workspace\cppcheck-addons-2.21.0`. I reviewed the code first: it only reads dumps, and its one subprocess call is for a premium addon that isn't present.

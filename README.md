@@ -39,6 +39,7 @@ Set by Zephyr from the upstream board devicetree (`boards/st/nucleo_h723zg` in t
 CMakeLists.txt      Zephyr app build file
 Kconfig             App Kconfig: selects STM32Cube HAL/LL modules; static IP settings
 prj.conf            App Kconfig settings
+debug.conf          Extra settings for a debug build (-Og, asserts, thread info)
 boards/
   nucleo_h723zg.overlay   Devicetree overlay (frees PB14 from TIM12 PWM)
 src/
@@ -47,7 +48,7 @@ src/
   led_cmsis.c/.h    LD3 via CMSIS registers
   app_net.c/.h      Ethernet bring-up, DHCPv4, logs the lease
 docs/               Reference manuals (local only, see below)
-tools/              Static analysis scripts, MISRA deviations, rule-text extractor
+tools/              Build env, VS Code debug templates, static analysis, MISRA deviations
 ```
 
 ## Mixing Zephyr, HAL and CMSIS
@@ -59,13 +60,12 @@ tools/              Static analysis scripts, MISRA deviations, rule-text extract
 
 ## Build
 
-Needs the west workspace at `D:\Workspace` (Zephyr 4.4.0). Until the Zephyr SDK is usable, build with CubeIDE's Arm GCC (exact commands in CLAUDE.md):
+Needs the west workspace at `D:\Workspace` (Zephyr 4.4.0). Until the Zephyr SDK is usable, builds use CubeIDE's Arm GCC; `tools/zephyr_env.sh` sets that up (paths are for this PC's CubeIDE install):
 
 ```
-unset ZEPHYR_SDK_INSTALL_DIR
-export ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb
-export GNUARMEMB_TOOLCHAIN_PATH=<CubeIDE>/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.<ver>/tools
-west build -p always -b nucleo_h723zg
+source tools/zephyr_env.sh
+west build -p always -b nucleo_h723zg                                   # release (-Os)
+west build -p always -b nucleo_h723zg -- -DEXTRA_CONF_FILE=debug.conf  # debug
 ```
 
 Output: `build/zephyr/zephyr.elf` (about 147 KB flash, 34 KB RAM with networking and the shell).
@@ -73,8 +73,21 @@ Output: `build/zephyr/zephyr.elf` (about 147 KB flash, 34 KB RAM with networking
 ## Flash
 
 ```
-west flash --cli <CubeIDE>/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.<ver>/tools/bin/STM32_Programmer_CLI.exe
+source tools/zephyr_env.sh
+west flash --cli "$STM32_PROGRAMMER_CLI"
 ```
+
+## Debug
+
+Step-by-step debugging in VS Code with the **Cortex-Debug** extension and ST's ST-LINK GDB server (both come with / via the CubeIDE install):
+
+1. Copy `tools/vscode/launch.json` and `tasks.json` into `.vscode/` (already done on this PC).
+2. Plug in the board, press **F5**, and pick **Debug (ST-LINK, build + flash, stop at main)**. It builds the debug image (`debug.conf`: `-Og`, asserts, thread info), flashes it and stops at `main`.
+3. Use breakpoints, F10/F11 to step, and the Variables, Call Stack and Watch views. **Cortex-Debug: Peripherals** shows live registers (GPIOB, ETH, RCC ...) from the STM32H723 SVD.
+
+**Attach (ST-LINK, no reset, no flash)** halts the firmware that's already running, which is useful when it hangs. The ELF in `build/` must match what's on the board.
+
+Without a debugger: a crash prints Zephyr's fatal-error dump (faulting PC, thread) on the console; resolve the PC with `arm-none-eabi-addr2line -e build/zephyr/zephyr.elf <pc>`. The shell has `kernel threads`, `kernel stacks` and `device list`.
 
 ## Static analysis
 

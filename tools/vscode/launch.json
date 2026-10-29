@@ -1,0 +1,39 @@
+{
+  // Template: copy to .vscode/launch.json (.vscode/ is gitignored).
+  // Needs the Cortex-Debug extension (marus25.cortex-debug). Uses ST's
+  // ST-LINK_gdbserver, GDB and the STM32H723 SVD from the CubeIDE install;
+  // paths change when CubeIDE updates.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug (ST-LINK, build + flash, stop at main)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "preLaunchTask": "Zephyr: build (debug)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/zephyr/zephyr.elf",
+      "servertype": "stlink",
+      "serverpath": "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.win32_2.2.500.202604010938/tools/bin/ST-LINK_gdbserver.exe",
+      "stm32cubeprogrammer": "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.500.202603051304/tools/bin",
+      "gdbPath": "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/bin/arm-none-eabi-gdb.exe",
+      "device": "STM32H723ZG",
+      "interface": "swd",
+      "svdFile": "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_2.2.500.202605201745/resources/cmsis/STMicroelectronics_CMSIS_SVD/STM32H723.svd",
+      "runToEntryPoint": "main"
+    },
+    {
+      "name": "Attach (ST-LINK, no reset, no flash)",
+      "type": "cortex-debug",
+      "request": "attach",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/zephyr/zephyr.elf",
+      "servertype": "stlink",
+      "serverpath": "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.win32_2.2.500.202604010938/tools/bin/ST-LINK_gdbserver.exe",
+      "stm32cubeprogrammer": "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.win32_2.2.500.202603051304/tools/bin",
+      "gdbPath": "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/bin/arm-none-eabi-gdb.exe",
+      "device": "STM32H723ZG",
+      "interface": "swd",
+      "svdFile": "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_2.2.500.202605201745/resources/cmsis/STMicroelectronics_CMSIS_SVD/STM32H723.svd"
+    }
+  ]
+}

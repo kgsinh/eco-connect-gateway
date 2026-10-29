@@ -8,6 +8,7 @@ build/
 .cproject
 .mxproject
 .settings/
+*.launch
 *.bak
 *.tmp
 .metadata/

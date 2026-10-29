@@ -53,7 +53,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 ### 2026-10-27 (static analysis rework)
 - Reworked static analysis for the Zephyr layout. MPLAB's cppcheck 2.11 + misra.exe can't handle Zephyr headers (silent empty dumps), so with the user's approval switched MISRA to the official cppcheck 2.21.0 misra.py addon, downloaded to `D:\Workspace\cppcheck-addons-2.21.0`. I reviewed the code first: it only reads dumps, and its one subprocess call is for a premium addon that isn't present.
 - Worked around these cppcheck issues: CRLF in flags, 3+ `--include`, GCC register binding, 2.11 DT macro expansion. Found a misra.py 2.21 rule 7.3 regex bug (`Pull`).
-- Fixed 2× Rule 8.9. Everything else is a documented deviation (tools/misra_deviations.txt). Rebuilt OK (147,448 B flash); not reflashed, since the change is only declaration scope.
+- Fixed 2× Rule 8.9. Everything else is a documented deviation (tools/misra_deviations.txt). Rebuilt OK (147,448 B flash). The user reflashed and tested on 2026-10-29: LEDs and ping still work.
 
 ### 2026-10-27 (docs refresh)
 - Brought README (Ethernet static IP + PC setup, console how-to, build size, Kconfig role), CLAUDE.md (Ethernet in Hardware, new Console section) and NOTES (build size) in line with the code.

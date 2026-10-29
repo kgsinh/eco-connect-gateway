@@ -19,7 +19,10 @@
       "device": "STM32H723ZG",
       "interface": "swd",
       "svdFile": "C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_2.2.500.202605201745/resources/cmsis/STMicroelectronics_CMSIS_SVD/STM32H723.svd",
-      "runToEntryPoint": "main"
+      "runToEntryPoint": "main",
+      // Connect under reset: Zephyr idles in WFI, and a sleeping H7 drops the
+      // debug port unless DBGMCU debug-in-sleep is set (debug.conf sets it)
+      "serverArgs": ["-k"]
     },
     {
       "name": "Attach (ST-LINK, no reset, no flash)",

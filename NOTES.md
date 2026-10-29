@@ -30,6 +30,8 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **Console:** ST-Link VCOM is **COM5** on this PC, 115200 8N1. Use `python -m serial.tools.miniterm --filter direct COM5 115200` (without `--filter direct`, miniterm shows the ANSI colour codes as `␛[..m`) or PuTTY `-serial COM5 -sercfg 115200,8,n,1,N`. The shell prompt is `uart:~$`.
 - **Windows Firewall blocks inbound ping by default**, so `net ping 192.168.50.1` from the board may time out. Test PC → board.
 - **Debugging:** VS Code Cortex-Debug + ST-LINK_gdbserver + CubeIDE GDB + STM32H723 SVD. Templates are in tools/vscode/, the live copies in .vscode/ (the old C/C++ Runner launch.json is kept as .vscode/launch.json.bak). Debug build = `-DEXTRA_CONF_FILE=debug.conf` (-Og, ASSERT, DEBUG_THREAD_INFO, INIT_STACKS): 219,920 B flash vs 147,448 B release. Same build/ dir for both, so check `.config` before flashing.
+- **The C/C++ Runner extension re-adds a "C/C++ Runner: Debug Session" entry to .vscode/launch.json** (PC program `Core/Src/build/Debug/outDebug`). Selecting it gives "launch: program ... outDebug does not exist". Delete that entry, pick a "(ST-LINK ...)" config in the Run and Debug dropdown, and disable C/C++ Runner for this workspace (Extensions → C/C++ Runner → Disable (Workspace)).
+- **H7 + Zephyr idle = no hot attach.** Zephyr idles in WFI, and with DBGMCU debug-in-sleep off the H7's debug port stops answering: ST-LINK_gdbserver says "Could not verify ST device" and CubeProgrammer says "Unable to read device id from ROM table". Fixes: connect under reset (`-k` in the launch config; CubeProgrammer `mode=UR`; `west flash` already uses hw reset), and `CONFIG_STM32_ENABLE_DEBUG_SLEEP_STOP=y` in debug.conf so Attach works on debug builds. The release build doesn't set it, so attaching to it needs a reset.
 - **`tools/zephyr_env.sh`** holds the gnuarmemb toolchain and STM32_Programmer_CLI paths (one place to update when CubeIDE changes).
 - **`west flash` needs `--cli <path>`** because STM32_Programmer_CLI lives in the CubeIDE plugins folder, not on PATH or in Program Files.
 - **Python on Windows defaults to cp1252.** Always pass `encoding="utf-8"` when editing repo files from Python; an earlier README edit got mis-encoded this way (fixed 2026-10-27).
@@ -45,13 +47,17 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 
 ## Open items
 
-- First live debug session (F5 → stop at main, step, Peripherals view). The setup is verified offline only: paths exist, GDB resolves main/led_hal_toggle in the debug ELF, and the build task runs. The board was unplugged.
+- Confirm F5 in VS Code end to end. The same chain is verified from the CLI on the board (see the session log); the Peripherals view is not tried yet.
 - Test Ethernet via a router (DHCP lease, `net ping <gateway>`); the direct-PC static path is tested.
 - Download UM2407 (Nucleo-144 board manual) into docs/.
 - Fix the Zephyr SDK permissions (see Things to know), or decide to stay on gnuarmemb.
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
 
 ## Session log
+
+### 2026-10-29 (debugger bring-up)
+- F5 first ran the C/C++ Runner entry ("outDebug does not exist"): it was still the remembered selection and re-added itself until the user disabled the extension per workspace. I removed the entry.
+- Then "Could not verify ST device": the H7 was asleep in WFI. Added `-k` (connect under reset) to the launch config and `STM32_ENABLE_DEBUG_SLEEP_STOP` to debug.conf. Verified on the board via CLI: ST-LINK_gdbserver -k + GDB load (219,912 B), break at main, `next` ×2 (lines 24 → 28), read GPIOB->ODR.
 
 ### 2026-10-29 (debugging)
 - Added the debug setup: debug.conf, tools/zephyr_env.sh, tools/vscode/{launch,tasks}.json (installed into .vscode/). Debug build OK (219,920 B). Not tried live: no ST-Link was connected.

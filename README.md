@@ -87,6 +87,8 @@ Step-by-step debugging in VS Code with the **Cortex-Debug** extension and ST's S
 
 **Attach (ST-LINK, no reset, no flash)** halts the firmware that's already running, which is useful when it hangs. The ELF in `build/` must match what's on the board.
 
+**STM32CubeIDE** also works as a debugger front end: import `build/zephyr/zephyr.elf` via File → Import → C/C++ → STM32 Cortex-M Executable, and set Reset behaviour to *Connect under reset*. To build in CubeIDE as well, start it with `tools/cubeide.sh` and import the repo as an STM32 CMake Project; see NOTES.md.
+
 Without a debugger: a crash prints Zephyr's fatal-error dump (faulting PC, thread) on the console; resolve the PC with `arm-none-eabi-addr2line -e build/zephyr/zephyr.elf <pc>`. The shell has `kernel threads`, `kernel stacks` and `device list`.
 
 ## Static analysis

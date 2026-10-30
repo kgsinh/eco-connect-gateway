@@ -56,6 +56,11 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 
 ## Session log
 
+### 2026-10-30 (rename, CubeIDE import)
+- Project renamed to **Eco-Connect IoT Gateway** (CMake `project(eco_connect_iot_gateway)`, README/CLAUDE titles). Repo folder, GitHub repo (kgsinh/eco-connect-gateway; old URL redirects) and CubeIDE project renamed `eco-connect-gateway`; after moving the folder, rebuild with `-p always` (CMake cache holds absolute paths).
+- The New → STM32 CMake Project wizard always writes its own template (CMakeLists, Startup/, Sources/, .ld) and can't adopt the Zephyr tree; a name with spaces also breaks its CMake target. Use File → Import → Existing Code as Makefile Project with build command `west build ...` instead.
+- `tools/cubeide.sh` opens workspace D:/Workspace/STM32H7 (`-data`). analysis_flags.py no longer hardcodes the folder name.
+
 ### 2026-10-29 (debugger bring-up)
 - F5 first ran the C/C++ Runner entry ("outDebug does not exist"): it was still the remembered selection and re-added itself until the user disabled the extension per workspace. I removed the entry.
 - Then "Could not verify ST device": the H7 was asleep in WFI. Added `-k` (connect under reset) to the launch config and `STM32_ENABLE_DEBUG_SLEEP_STOP` to debug.conf. Verified on the board via CLI: ST-LINK_gdbserver -k + GDB load (219,912 B), break at main, `next` ×2 (lines 24 → 28), read GPIOB->ODR.

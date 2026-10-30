@@ -1,4 +1,4 @@
-# h7_blinky — NUCLEO-H723ZG
+# Eco-Connect IoT Gateway — NUCLEO-H723ZG
 
 Zephyr application for the **NUCLEO-H723ZG** board that mixes three API layers in one firmware: Zephyr APIs, STM32Cube HAL, and CMSIS register access. It serves as a workflow pilot for build, flash and static analysis before real work starts.
 

@@ -18,12 +18,13 @@ import sys
 from pathlib import Path
 
 APP_SRC = "src/"
+REPO = Path(__file__).resolve().parent.parent
 
 
 def app_entries(cc_path: Path) -> list:
     entries = json.loads(cc_path.read_text(encoding="utf-8"))
     return [e for e in entries
-            if Path(e["file"]).as_posix().split("/h7_blinky/")[-1].startswith(APP_SRC)]
+            if (REPO / APP_SRC) in Path(e["file"]).resolve().parents]
 
 
 def args_of(entry: dict) -> list:

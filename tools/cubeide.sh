@@ -12,6 +12,7 @@ cd "$(dirname "$0")/.." || exit 1
 source tools/zephyr_env.sh
 command -v west > /dev/null || { echo "west not on PATH" >&2; exit 1; }
 
-"/c/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/stm32cubeide.exe" > /dev/null 2>&1 &
+# -data: open the workspace that holds this repo (D:/Workspace/STM32H7), no picker
+"/c/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/stm32cubeide.exe" -data "$(cd .. && pwd -W)" > /dev/null 2>&1 &
 disown
 echo "STM32CubeIDE started with the Zephyr environment."

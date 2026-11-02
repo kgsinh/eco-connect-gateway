@@ -83,6 +83,9 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 
 ## Session log
 
+### 2026-11-02 (history rewrite: no AI co-author)
+- User decision: removed the `Co-Authored-By: Claude` trailer from all 35 commits (`git filter-branch --msg-filter`). Authors, dates, subjects and the final tree are unchanged; **all commit IDs changed** (old HEAD 5872f28, rewritten 58682e5). After the force-push, any other clone must re-clone or `git reset --hard origin/main`. CLAUDE.md now has a Git section: no AI attribution in commits or PRs. Pre-rewrite backup bundle was saved in the session scratchpad.
+
 ### 2026-11-02 (VS Code tasks, CubeIDE check)
 - Checked the CubeIDE setup after today's changes: project files untouched since 2026-10-30, CubeIDE's build command builds the debug image (247,564 B) with the new zephyr_env.sh; user confirmed CubeIDE debugging works. After the src/ moves: refresh the project, re-set breakpoints.
 - tools/vscode/tasks.json (+ .vscode copy): added Bare-metal build, build + flash, and Serial monitor (miniterm, port prompt default COM5). README: VS Code tasks table, equivalent commands, serial monitor notes; fixed the CubeIDE line (Makefile project, not STM32 CMake Project).

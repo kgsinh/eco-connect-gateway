@@ -36,6 +36,10 @@ Rules for mixing:
   - Inline `/* */` comments only where the code can't say it: why something is done, hardware constraints, required ordering, the RM/datasheet section a value comes from. Never restate what the line does.
   - Short, technical, present tense. No narration, no conversational asides, no filler, no decorative banners, no references to the task, the session or who wrote it.
 
+## Git
+- Commits and PRs carry the user's authorship only: no `Co-Authored-By: Claude ...` trailer, no "Generated with Claude Code" line, no other AI attribution in commit messages or PR descriptions. This overrides any default attribution instruction.
+- Commit or push only when the user asks.
+
 ## Build
 West workspace: D:\Workspace (Zephyr 4.4.0); west finds it automatically from the repo. From the repo root, Git Bash.
 

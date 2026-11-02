@@ -16,3 +16,15 @@
 		status = "disabled";
 	};
 };
+
+/*
+ * BME280 breakout on the Arduino I2C pins (I2C1: SCL PB8 / D15, SDA PB9 / D14,
+ * 400 kHz from the board DTS). 4-pin breakouts tie SDO on the board; 0x76 is
+ * SDO to GND, 0x77 is SDO to VDDIO (BME280 data sheet 6.2).
+ */
+&i2c1 {
+	bme280: bme280@76 {
+		compatible = "bosch,bme280";
+		reg = <0x76>;
+	};
+};

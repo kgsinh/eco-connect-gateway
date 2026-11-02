@@ -9,4 +9,5 @@ target_sources(app PRIVATE
   src/led_hal.c
   src/led_cmsis.c
   src/app_net.c
+  src/app_sensor.c
 )

@@ -1,6 +1,6 @@
 /**
  * @file main.c
- * @brief Eco-Connect gateway entry point: LED chase and network start.
+ * @brief Eco-Connect gateway entry point: LED chase, network and sensor start.
  *
  * One LED per API layer, all driven from this thread. Exactly one LED is on
  * at a time, moving LD1 -> LD2 -> LD3 every TICK_MS. The pattern differs on
@@ -19,6 +19,7 @@
 #include "led_hal.h"
 #include "led_cmsis.h"
 #include "app_net.h"
+#include "app_sensor.h"
 
 #define TICK_MS    250
 #define LED_COUNT  3U
@@ -75,6 +76,9 @@ int main(void)
 
 	/* Returns before the DHCP lease, so the LEDs keep running meanwhile */
 	(void)app_net_start();
+
+	/* A missing sensor is logged; the LEDs and network keep running */
+	(void)app_sensor_start();
 
 	/* All LEDs start off, so toggling keeps exactly one of them on */
 	if (led_toggle(cur) < 0) {

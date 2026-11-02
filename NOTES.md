@@ -15,7 +15,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - Clock (upstream board DTS): HSE 8 MHz (ST-Link MCO, bypass) → PLL1 550 MHz CPU, HCLK 275 MHz, APB 137.5 MHz. Console: USART3 (ST-Link VCOM).
 - LED-only build was 21,168 B flash / 4,608 B RAM and was tested on the board (2026-10-27).
 - **BME280** (`src/sensor/app_sensor.c`): Zephyr `bosch,bme280` driver on I2C1 at 0x76, own thread (prio 7, 1 KB static stack), logs `T .. C  P .. kPa  H .. %RH` every 2 s without float printf (milli split). `app_sensor_start()` returns -ENODEV and logs if the sensor doesn't probe; the rest keeps running. I2C and sensor shells enabled for bring-up (`i2c scan i2c@40005400`, `sensor get bme280@76`). Release build 169,752 B flash, 42,112 B RAM.
-- **Ethernet + IPv4** (`src/net/app_net.c`): Zephyr `eth_stm32_hal` driver (HAL ETH API v2, selects USE_STM32_HAL_ETH itself) + generic MII PHY driver for the LAN8742 at MDIO address 0, RMII pins from the board DTS. `app_net_start()` (called from main after LED init) first adds a static address `192.168.50.2/24` (`APP_NET_STATIC_IPV4_ADDR/_NETMASK` in the app Kconfig; empty = off) for a direct PC cable, with the PC set to 192.168.50.1/24. It then starts DHCPv4 without blocking (for router use; `NET_IF_UNICAST_IPV4_ADDR_COUNT=2` so both addresses fit) and logs IP/netmask/gateway/lease on `NET_EVENT_IPV4_ADDR_ADD`. Ping replies come from the IPv4 stack. The net shell is on the console (`net iface`, `net ping`, `net arp`). Build: 147,448 B flash, 33,984 B RAM.
+- **Ethernet + IPv4** (`src/net/app_net.c`): ENC28J60 on SPI1 (Zephyr `microchip,enc28j60` driver, node `enc28j60: ethernet@0` in the overlay): CS PD14/D10, INT PD15/D9 active low, SPI max 10 MHz → 8.6 MHz actual (PLL1_Q 137.5 MHz / 16; errata wants ≥ 8 MHz), MAC `00:04:A3:50:00:02` (driver forces Microchip's OUI on the first 3 bytes). 10BASE-T half duplex, no autonegotiation. On-board MAC, MDIO and `eth_phy` are disabled in the overlay. `app_net_start()` is unchanged: static `192.168.50.2/24` + non-blocking DHCPv4, logs the lease. Net shell on the console. Release build 164,668 B flash, 40 KB RAM.
 
 ## Things to know
 
@@ -26,10 +26,11 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **Port clocks:** HAL/CMSIS code enables GPIOE/GPIOB clocks itself even though the Zephyr gpio driver already did; enabling is idempotent.
 - **The board's pwm-led0 alias still points at the disabled PWM LED.** Don't enable CONFIG_LED_PWM / use pwm-led0 unless the overlay is changed back.
 - **CubeIDE recreates `.project` while the old project is still open in its workspace.** Eclipse files are gitignored now. Remove the old h7_blinky project from the CubeIDE workspace (don't delete contents), or import the folder as an *STM32 CMake Project* to use CubeIDE as editor/debugger (Zephyr doc: develop/tools/stm32cubeide.rst, validated on Linux 1.16 only).
-- **Ethernet MAC address** is not configured; the driver builds it from the chip UID: `02:80:E1:` + 3 bytes of CRC32(UID), locally administered and stable per board. Set `local-mac-address` in the overlay to override it.
-- **Ethernet DMA buffers live in SRAM2** (`memory-regions = <&sram2>` in stm32h7.dtsi). The DTS doesn't mark SRAM2 non-cacheable. While `&mac` is enabled, zephyr/soc/st/stm32/stm32h7x/mpu_regions.c adds the MPU region SRAM_ETH_BUF (16 KB, non-cacheable) and soc sections.ld places the buffers there. Disabling `&mac` (ENC28J60 switch) removes both, so SRAM2 is free again. That is why SRAM2 shows 100% used, even in the LED-only build. Don't put other data there.
+- **Disabling a bus node doesn't disable its children.** With `&mdio` disabled, `eth_phy` (ethernet-phy@0) stayed okay and phy_mii.c failed to build (`__device_dts_ord_N undeclared`). Disable the child too.
+- **SRAM2 is free since the ENC28J60 switch.** The on-board MAC used it for DMA buffers via an MPU non-cacheable region in zephyr/soc/st/stm32/stm32h7x/mpu_regions.c; that region and the linker section only exist while `&mac` is enabled. The ENC28J60 has no DMA in our build (SPI without `dmas`), so nothing needs cache maintenance.
 - **docs/um3252-stm32h7-series.pdf is the X-CUBE-CLASSB self-test library guide, not the board manual.** It was mislabelled in CLAUDE.md/README until 2026-10-27. The Nucleo-144 board manual is UM2407 (not downloaded yet).
 - **Console:** ST-Link VCOM is **COM5** on this PC, 115200 8N1. Use `python -m serial.tools.miniterm --filter direct COM5 115200` (without `--filter direct`, miniterm shows the ANSI colour codes as `␛[..m`) or PuTTY `-serial COM5 -sercfg 115200,8,n,1,N`. The shell prompt is `uart:~$`.
+- **PC side of the direct cable is a USB adapter, "Ethernet 3" (ASIX USB to Gigabit).** It had no static address on 2026-11-02 (only APIPA 169.254.x), so `ping 192.168.50.2` failed until a matching address existed. Set it to 192.168.50.1/24 (admin: `New-NetIPAddress -InterfaceAlias 'Ethernet 3' -IPAddress 192.168.50.1 -PrefixLength 24`), or for a quick test add one on the board: `net ipv4 add 1 169.254.50.2 255.255.0.0` (lost on reset).
 - **Windows Firewall blocks inbound ping by default**, so `net ping 192.168.50.1` from the board may time out. Test PC → board.
 - **Debugging:** VS Code Cortex-Debug + ST-LINK_gdbserver + CubeIDE GDB + STM32H723 SVD. Templates are in tools/vscode/, the live copies in .vscode/ (the old C/C++ Runner launch.json is kept as .vscode/launch.json.bak). Debug build = `-DEXTRA_CONF_FILE=debug.conf` (-Og, ASSERT, DEBUG_THREAD_INFO, INIT_STACKS): 219,920 B flash vs 147,448 B release. Same build/ dir for both, so check `.config` before flashing.
 - **The C/C++ Runner extension re-adds a "C/C++ Runner: Debug Session" entry to .vscode/launch.json** (PC program `Core/Src/build/Debug/outDebug`). Selecting it gives "launch: program ... outDebug does not exist". Delete that entry, pick a "(ST-LINK ...)" config in the Run and Debug dropdown, and disable C/C++ Runner for this workspace (Extensions → C/C++ Runner → Disable (Workspace)).
@@ -57,7 +58,7 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 1. Register blinky: bare-metal registers, no HAL, **no RTOS**. `baremetal/blinky/` (own startup.c, linker script, register defines from RM0468/PM0253, HSI 64 MHz, polled SysTick; CMake+Ninja via build.sh). Builds clean, 460 B. **Done 2026-11-02:** flashed with `build.sh flash`, user confirmed all three LEDs at the right rates; ODR sampled over SWD (HOTPLUG) showed PB14/PE1 toggling.
 2. Zephyr blinky: **done 2026-11-02.** src/main.c runs an LED chase (LD1 → LD2 → LD3, 250 ms) across the three API layers, visibly different from the bare-metal pattern. Release build flashed with `west flash`; boot log on COM5 and the chase confirmed by the user.
 3. I2C sensor (BME280), real readings: **done 2026-11-02.** 4-pin 3.3 V breakout on I2C1 (D15 SCL / D14 SDA, 3V3, GND), node `bme280@76` in the overlay, src/app_sensor.c logs T/P/H every 2 s from its own thread. On hardware: `i2c scan` finds only 0x76; humidity reads, so it is a real BME280 (0x60), not a BMP280. First readings: 28.6 C, 99.29 kPa, 34 %RH.
-4. ENC28J60 via Zephyr's driver: planned for 2026-11-02.
+4. ENC28J60 via Zephyr's driver: **done 2026-11-02.** Driver logs `ethernet@0: Initialized`; `net iface` shows carrier ON, 10 Mbit; PC adapter links at 10 Mbps half duplex; ping from the PC 6/6, 1 ms, TTL 64, ARP shows 00-04-a3-50-00-02 (tested on a temporary 169.254.50.2 address, see Things to know).
 5/7. Repo + README: clean build from a fresh clone, README states the board, toolchain version, build and flash. The brief says *public* repo; GitHub repo is currently PRIVATE (user's call). Fresh-clone build is untested; tools/zephyr_env.sh hardcodes this PC's CubeIDE paths.
 6. Pins & clocks note: LED pins, system clock, I2C pins, ENC28J60 SPI pins + clock.
 8. One-minute live demo.
@@ -70,16 +71,21 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 
 ## Open items
 
-- **Ethernet differs from the brief:** P1 wants the ENC28J60 over SPI (the onboard RJ45 is a stretch goal for after P1), but app_net.c uses the onboard MAC + LAN8742. Decided 2026-11-01: switch to ENC28J60, planned for 2026-11-02 (`microchip,enc28j60` driver, SPI + INT pin, disable `&mac`/`&mdio` in the overlay).
+- Optional later: `ETH_PHY_DRIVER`/`MDIO` are still `y` by default with no node; harmless, could be turned off to trim the build.
 - P1 parts not started: BME280 (I2C), IWDG, HTTP server, ram/rom reports in docs/evidence/ram-rom/, written DMA/cache choice.
 
 - Confirm F5 in VS Code end to end. The same chain is verified from the CLI on the board (see the session log); the Peripherals view is not tried yet.
-- Test Ethernet via a router (DHCP lease, `net ping <gateway>`); the direct-PC static path is tested.
+- Test Ethernet via a router (DHCP lease, `net ping <gateway>`) with the ENC28J60; the direct-PC path is tested.
+- Set the PC's USB Ethernet adapter to 192.168.50.1/24 so the documented static path works without the 169.254 workaround.
 - Download UM2407 (Nucleo-144 board manual) into docs/.
 - Fix the Zephyr SDK permissions (see Things to know), or decide to stay on gnuarmemb.
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
 
 ## Session log
+
+### 2026-11-02 (deliverable 4: ENC28J60)
+- Switched Ethernet to the ENC28J60 on SPI1 (overlay: disable &mac, &mdio, &eth_phy; enc28j60 node). First build failed: eth_phy stays enabled under a disabled mdio. 10-pin module is 3.3 V only; RESET/CS have internal pull-ups (DS39662C pin table note 4), RESET left open.
+- Hardware: driver initialised on first boot (SPI OK). No link at first: cable was not in the module's RJ45. Then PC "Ethernet 3" Up at 10 Mbps half duplex, board carrier ON. PC adapter had only an APIPA address, so tested via `net ipv4 add 1 169.254.50.2 255.255.0.0` on the board: ping 6/6.
 
 ### 2026-11-02 (source folders)
 - src/ split by function: `net/`, `sensor/`, `led/hal/`, `led/cmsis/`, with `src/` as the single include root. misra_check.sh now finds .c files recursively (`find src -name '*.c'`). Same image size (169,752 B); flashed, boots and reads the sensor.

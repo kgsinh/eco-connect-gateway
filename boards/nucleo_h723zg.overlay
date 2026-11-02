@@ -18,6 +18,44 @@
 };
 
 /*
+ * Ethernet: ENC28J60 module on SPI1 (Arduino header) replaces the on-board
+ * RMII MAC + LAN8742A, so the driver matches the F4 boards in the cohort.
+ * Disabling &mac also drops Zephyr's non-cacheable SRAM2 region for the
+ * on-board MAC (soc/st/stm32/stm32h7x/mpu_regions.c).
+ */
+&mac {
+	status = "disabled";
+};
+
+&mdio {
+	status = "disabled";
+};
+
+/* A child stays enabled when its bus is disabled; the PHY driver would then
+ * reference a missing MDIO device.
+ */
+&eth_phy {
+	status = "disabled";
+};
+
+&spi1 {
+	enc28j60: ethernet@0 {
+		compatible = "microchip,enc28j60";
+		reg = <0>;   /* cs-gpios[0] from the board DTS: PD14 / D10 */
+		/*
+		 * SPI1 kernel clock is PLL1_Q = 137.5 MHz with power-of-2 prescalers:
+		 * a 10 MHz limit selects /16 = 8.6 MHz, above the 8 MHz minimum in the
+		 * ENC28J60 silicon errata and conservative for jumper wires.
+		 */
+		spi-max-frequency = <DT_FREQ_M(10)>;
+		/* INT is active low (DS39662C 12.0) */
+		int-gpios = <&gpiod 15 GPIO_ACTIVE_LOW>;   /* PD15 / D9 */
+		/* The driver replaces the first three bytes with Microchip's OUI */
+		local-mac-address = [00 04 a3 50 00 02];
+	};
+};
+
+/*
  * BME280 breakout on the Arduino I2C pins (I2C1: SCL PB8 / D15, SDA PB9 / D14,
  * 400 kHz from the board DTS). 4-pin breakouts tie SDO on the board; 0x76 is
  * SDO to GND, 0x77 is SDO to VDDIO (BME280 data sheet 6.2).

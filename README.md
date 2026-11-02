@@ -12,12 +12,27 @@ LED chase: one LED on at a time, LD1 → LD2 → LD3, 250 ms per step. (The bare
 | LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led/hal/led_hal.c` | 2nd |
 | LD3 red | PB14 | CMSIS registers, `src/led/cmsis/led_cmsis.c` | 3rd |
 
-**Ethernet** (`src/net/app_net.c`): on-board RMII Ethernet (LAN8742A PHY) via Zephyr's `eth_stm32_hal` driver. The board answers ping on two IPv4 addresses:
+**Ethernet** (`src/net/app_net.c`): ENC28J60 module on SPI1 (10BASE-T) via Zephyr's `microchip,enc28j60` driver; the on-board RMII Ethernet is disabled in the overlay. The board answers ping on two IPv4 addresses:
 
 - **Static `192.168.50.2/24`**, for a cable straight to a PC. Set the PC's Ethernet adapter to `192.168.50.1` / `255.255.255.0`, no gateway, then `ping 192.168.50.2`. Change or disable it with `CONFIG_APP_NET_STATIC_IPV4_ADDR` in `prj.conf` (empty = off).
 - **DHCP**, for a router. The leased address is printed on the console.
 
-Tested: 100 Mb full-duplex link, ping from the PC over a direct cable.
+Tested: 10 Mb half-duplex link (the ENC28J60 has no autonegotiation; the PC adapter detects 10 Mb), ping from the PC over a direct cable.
+
+ENC28J60 wiring (3.3 V module, no regulator):
+
+| ENC28J60 | Nucleo | MCU pin |
+|---|---|---|
+| VCC | 3V3 | — |
+| GND | GND | — |
+| SCK | D13 | PA5 |
+| SO | D12 | PA6 (MISO) |
+| SI | D11 | PB5 (MOSI) |
+| CS | D10 | PD14 |
+| INT | D9 | PD15 |
+| RESET, WOL, CLKOUT | not connected (RESET has an internal pull-up) | — |
+
+BME280 wiring (3.3 V breakout): VCC to 3V3, GND to GND, SCL to D15 (PB8), SDA to D14 (PB9). I2C address 0x76.
 
 **Console:** ST-Link virtual COM port, 115200 8N1. It shows boot logs and the Zephyr shell (`uart:~$`; try `net iface`, `net ping <ip>`, `help`). The shell uses ANSI colour/cursor codes, so use a terminal that understands them: `python -m serial.tools.miniterm --filter direct COMx 115200` or PuTTY. Plain miniterm shows them as `␛[..m`.
 

@@ -28,6 +28,12 @@ Rules for mixing:
 - MISRA C:2025 mandatory + required rules apply to our code (src/) regardless of layer used.
 - No dynamic memory allocation (malloc/free, k_malloc).
 - Zephyr code style: tabs, braces on every block.
+- Comments: Doxygen style, written the way an experienced firmware engineer would. Applies to all our code (src/, baremetal/).
+  - Every .c/.h starts with `/** @file` + `@brief` (one line), then a short paragraph only if the file needs context (ownership, clock, constraints).
+  - Public functions are documented once, in the header: `@brief`, `@param`, `@return` (`@retval` for specific error codes), `@note` / `@pre` only when they carry real information. Static functions get a `/** @brief ... */` in the .c. Don't repeat the header doc in the .c.
+  - Struct members, enum values and non-obvious macros: trailing `/**< ... */`. Group related register/bit macros with `@name` / `@{` `@}` where it helps.
+  - Inline `/* */` comments only where the code can't say it: why something is done, hardware constraints, required ordering, the RM/datasheet section a value comes from. Never restate what the line does.
+  - Short, technical, present tense. No narration, no conversational asides, no filler, no decorative banners, no references to the task, the session or who wrote it.
 
 ## Build
 West workspace: D:\Workspace (Zephyr 4.4.0); west finds it automatically from the repo. From the repo root, Git Bash.

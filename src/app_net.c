@@ -1,9 +1,9 @@
-/*
- * Ethernet bring-up: adds the static IPv4 address from Kconfig (for a direct
- * PC link), starts DHCPv4 on the default interface (for a router) and logs
- * the lease. The Ethernet MAC/PHY driver (eth_stm32_hal, LAN8742 over RMII) is
- * brought up by Zephyr from the board devicetree; ICMP echo replies (ping)
- * are handled by the IPv4 stack.
+/**
+ * @file app_net.c
+ * @brief IPv4 bring-up: static address for a direct PC link, DHCPv4 for a router.
+ *
+ * The Ethernet driver is started by Zephyr from the devicetree. Ping replies
+ * come from the IPv4 stack.
  */
 #include "app_net.h"
 #include <errno.h>
@@ -15,6 +15,12 @@
 
 LOG_MODULE_REGISTER(app_net, LOG_LEVEL_INF);
 
+/**
+ * @brief Log the DHCP address, netmask, gateway and lease once a lease is bound.
+ * @param cb Registered callback (unused).
+ * @param mgmt_event Event that fired; only NET_EVENT_IPV4_ADDR_ADD is handled.
+ * @param iface Interface the address was added to.
+ */
 static void ipv4_event_handler(struct net_mgmt_event_callback *cb,
 			       uint64_t mgmt_event, struct net_if *iface)
 {
@@ -43,7 +49,13 @@ static void ipv4_event_handler(struct net_mgmt_event_callback *cb,
 	}
 }
 
-/* Static address for a direct PC link; DHCP still runs for router use */
+/**
+ * @brief Add APP_NET_STATIC_IPV4_ADDR/_NETMASK to the interface.
+ * @param iface Interface to configure.
+ * @retval 0 Address added, or none configured (empty Kconfig string).
+ * @retval -EINVAL Address or netmask string does not parse.
+ * @retval -ENOMEM No free unicast address slot.
+ */
 static int add_static_ipv4(struct net_if *iface)
 {
 	struct net_in_addr addr;
@@ -73,7 +85,7 @@ static int add_static_ipv4(struct net_if *iface)
 
 int app_net_start(void)
 {
-	/* Static storage: net_mgmt keeps a pointer to it after registration */
+	/* net_mgmt keeps a pointer to the callback after registration */
 	static struct net_mgmt_event_callback ipv4_cb;
 	struct net_if *iface = net_if_get_default();
 

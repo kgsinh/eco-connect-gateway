@@ -1,6 +1,9 @@
-/*
- * LD2 (yellow, PE1) driver - STM32Cube HAL GPIO.
- * HAL module enabled through APP_STM32_HAL_GPIO in the app Kconfig.
+/**
+ * @file led_hal.c
+ * @brief LD2 (yellow, PE1) driven through the STM32Cube HAL GPIO API.
+ *
+ * The HAL GPIO module is compiled in through APP_STM32_HAL_GPIO in the app
+ * Kconfig.
  */
 #include "led_hal.h"
 #include <stm32h7xx_hal.h>
@@ -12,10 +15,10 @@ void led_hal_init(void)
 {
 	GPIO_InitTypeDef gpio = {0};
 
-	/* Port E clock may already be on (Zephyr gpioe driver); enabling is idempotent */
+	/* The Zephyr gpioe driver may have enabled it already; enabling is idempotent */
 	__HAL_RCC_GPIOE_CLK_ENABLE();
 
-	/* Latch low before switching to output so the LED cannot flash on */
+	/* Drive low before switching to output so the LED does not flash on */
 	HAL_GPIO_WritePin(LED_HAL_PORT, LED_HAL_PIN, GPIO_PIN_RESET);
 
 	gpio.Pin = LED_HAL_PIN;

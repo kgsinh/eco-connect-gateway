@@ -79,6 +79,9 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 
 ## Session log
 
+### 2026-11-02 (comment style)
+- User rule, now in CLAUDE.md Coding standard: Doxygen comments (`@file`/`@brief` per file, public API documented once in the header, `/**< */` for members), inline comments only for why/hardware/RM references. Converted src/ and baremetal/blinky; comment-only change, both images rebuild to the same size.
+
 ### 2026-11-02 (deliverable 1: register blinky)
 - Added baremetal/blinky: standalone, no HAL/RTOS/vendor headers. Register addresses cross-checked in RM0468 Table 7 (pdftotext shifts that table's peripheral names one row down: RCC is 0x58024400, GPIOB 0x58020400, GPIOE 0x58021000), Zephyr DTS and ST's stm32h723xx.h. No PWR_CR3 setup needed because sys_ck stays at the reset HSI 64 MHz (RM0468 6.8.4). Vector table as a struct (SP pointer + 15 handlers) avoids a data-to-function pointer cast. `-fno-tree-loop-distribute-patterns` keeps the startup loops from turning into memcpy/memset calls under -nostdlib. No make on this PC: CMake + Ninja.
 

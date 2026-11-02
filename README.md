@@ -60,7 +60,17 @@ tools/              Build env, VS Code debug templates, static analysis, MISRA d
 
 ## Build
 
-Needs the west workspace at `D:\Workspace` (Zephyr 4.4.0). Until the Zephyr SDK is usable, builds use CubeIDE's Arm GCC; `tools/zephyr_env.sh` sets that up (paths are for this PC's CubeIDE install):
+Zephyr version and modules are pinned in [west.yml](west.yml) (Zephyr v4.4.0 + cmsis_6, hal_stm32, picolibc, hal_st, littlefs). On this PC the existing west workspace at `D:\Workspace` is used (same commits). On a new machine, create a workspace from the pin:
+
+```
+git config --global core.longpaths true   # Windows: Zephyr has paths over 260 chars
+mkdir zephyr-ws && cd zephyr-ws
+git clone https://github.com/kgsinh/eco-connect-gateway
+west init -l eco-connect-gateway
+west update
+```
+
+Until the Zephyr SDK is usable, builds use CubeIDE's Arm GCC; `tools/zephyr_env.sh` sets that up (paths are for this PC's CubeIDE install):
 
 ```
 source tools/zephyr_env.sh

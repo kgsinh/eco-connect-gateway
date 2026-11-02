@@ -32,6 +32,8 @@ Rules for mixing:
 ## Build
 West workspace: D:\Workspace (Zephyr 4.4.0); west finds it automatically from the repo. From the repo root, Git Bash.
 
+Versions are pinned in `west.yml` (Zephyr v4.4.0, modules cmsis_6, hal_stm32, picolibc, hal_st, littlefs via `name-allowlist`). D:\Workspace still uses its own manifest (zephyr/west.yml) at the same commits; west.yml only applies to a workspace made with `west init -l`. A new module (e.g. a sensor HAL) goes in the allowlist. Upgrading Zephyr = change `revision`, `west update`, rebuild, retest, update this file.
+
 The Zephyr SDK (C:\Users\ksrgo\zephyr-sdk-1.0.1) is currently unreadable by the user account (see NOTES.md), and the user env var `ZEPHYR_SDK_INSTALL_DIR` points at it, which forces CMake to look for it. Until that's fixed, build with CubeIDE's Arm GCC via the gnuarmemb toolchain variant. `tools/zephyr_env.sh` sets that up (and `$STM32_PROGRAMMER_CLI`):
 
     source tools/zephyr_env.sh
@@ -85,5 +87,8 @@ Located in /docs (gitignored, local only — see README for download names):
 - stm32h723zg.pdf — Datasheet: electrical characteristics, pinout, package. Use for pin/voltage/timing limit questions.
 - um3252-stm32h7-series.pdf — X-CUBE-CLASSB self-test library guide for STM32H7 (IEC 60730 Class B). Not the board manual.
 - Board manual (Nucleo-144 user manual UM2407: jumpers, solder bridges, Ethernet/LED wiring) is not in docs/ yet — download it before relying on board-level wiring details; until then the Zephyr board DTS is the reference.
+- Board-Suitability-P1-P2.pdf, ESC-Embedded-Software-Design-Mentor.pdf (7-stage method), Presentation - Embedded Design Cohort - Batch 01.pdf (week-one deliverables) — mentor's cohort material; the requirements this project is built against.
+- Arm-Cortex-M7-Processor-Datasheet.pdf — Arm's Cortex-M7 processor overview.
+- enc28j60.pdf — ENC28J60 data sheet (DS39662C). bst-bme280-ds002.pdf — BME280 data sheet (rev 1.24).
 - MISRA-C-2025.pdf — MISRA C:2025 (licensed to the user personally; local only). Use for rule rationale and compliant examples.
 Read the relevant document before writing new CMSIS-level code for anything not touched yet this session — don't rely on memory for register addresses or bit definitions. For Zephyr APIs, read the headers/docs in D:\Workspace\zephyr.

@@ -1,0 +1,33 @@
+# West manifest: pins the Zephyr version and the modules this app builds with.
+#
+# Fresh workspace (any empty folder, clone this repo into it first):
+#   git clone https://github.com/kgsinh/eco-connect-gateway
+#   west init -l eco-connect-gateway
+#   west update
+#
+# The existing D:\Workspace keeps using its own manifest (zephyr/west.yml);
+# this file only takes effect in a workspace created with `west init -l`.
+#
+# To upgrade Zephyr: change `revision`, run `west update`, rebuild, retest.
+# To use another module (e.g. a sensor HAL), add its name to name-allowlist;
+# its revision comes from Zephyr's own west.yml at the pinned release.
+
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v4.4.0
+      import:
+        name-allowlist:
+          - cmsis_6     # CMSIS core headers (Cortex-M7)
+          - hal_stm32   # STM32Cube HAL/LL used by Zephyr drivers and src/
+          - picolibc    # C library
+          - hal_st      # ST sensor drivers (MEMS etc.), for sensors added later
+          - littlefs    # P2: filesystem on the W25Q SPI NOR
+
+  self:
+    path: eco-connect-gateway

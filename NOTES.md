@@ -25,7 +25,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **The board's pwm-led0 alias still points at the disabled PWM LED.** Don't enable CONFIG_LED_PWM / use pwm-led0 unless the overlay is changed back.
 - **CubeIDE recreates `.project` while the old project is still open in its workspace.** Eclipse files are gitignored now. Remove the old h7_blinky project from the CubeIDE workspace (don't delete contents), or import the folder as an *STM32 CMake Project* to use CubeIDE as editor/debugger (Zephyr doc: develop/tools/stm32cubeide.rst, validated on Linux 1.16 only).
 - **Ethernet MAC address** is not configured; the driver builds it from the chip UID: `02:80:E1:` + 3 bytes of CRC32(UID), locally administered and stable per board. Set `local-mac-address` in the overlay to override it.
-- **Ethernet DMA buffers live in SRAM2** (`memory-regions = <&sram2>` in stm32h7.dtsi, non-cacheable). That is why SRAM2 shows 100% used, even in the LED-only build. Don't put other data there.
+- **Ethernet DMA buffers live in SRAM2** (`memory-regions = <&sram2>` in stm32h7.dtsi). The DTS doesn't mark SRAM2 non-cacheable. While `&mac` is enabled, zephyr/soc/st/stm32/stm32h7x/mpu_regions.c adds the MPU region SRAM_ETH_BUF (16 KB, non-cacheable) and soc sections.ld places the buffers there. Disabling `&mac` (ENC28J60 switch) removes both, so SRAM2 is free again. That is why SRAM2 shows 100% used, even in the LED-only build. Don't put other data there.
 - **docs/um3252-stm32h7-series.pdf is the X-CUBE-CLASSB self-test library guide, not the board manual.** It was mislabelled in CLAUDE.md/README until 2026-10-27. The Nucleo-144 board manual is UM2407 (not downloaded yet).
 - **Console:** ST-Link VCOM is **COM5** on this PC, 115200 8N1. Use `python -m serial.tools.miniterm --filter direct COM5 115200` (without `--filter direct`, miniterm shows the ANSI colour codes as `␛[..m`) or PuTTY `-serial COM5 -sercfg 115200,8,n,1,N`. The shell prompt is `uart:~$`.
 - **Windows Firewall blocks inbound ping by default**, so `net ping 192.168.50.1` from the board may time out. Test PC → board.
@@ -33,9 +33,12 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **The C/C++ Runner extension re-adds a "C/C++ Runner: Debug Session" entry to .vscode/launch.json** (PC program `Core/Src/build/Debug/outDebug`). Selecting it gives "launch: program ... outDebug does not exist". Delete that entry, pick a "(ST-LINK ...)" config in the Run and Debug dropdown, and disable C/C++ Runner for this workspace (Extensions → C/C++ Runner → Disable (Workspace)).
 - **H7 + Zephyr idle = no hot attach.** Zephyr idles in WFI, and with DBGMCU debug-in-sleep off the H7's debug port stops answering: ST-LINK_gdbserver says "Could not verify ST device" and CubeProgrammer says "Unable to read device id from ROM table". Fixes: connect under reset (`-k` in the launch config; CubeProgrammer `mode=UR`; `west flash` already uses hw reset), and `CONFIG_STM32_ENABLE_DEBUG_SLEEP_STOP=y` in debug.conf so Attach works on debug builds. The release build doesn't set it, so attaching to it needs a reset.
 - **STM32CubeIDE build (working 2026-10-30):** start CubeIDE via `tools/cubeide.sh` (inherits zephyr_env.sh). Project = File → Import → Existing Code as Makefile Project (not the STM32 CMake Project wizard: it writes its own template and can't adopt Zephyr). C/C++ Build: Build command `west` alone (with args in that field CDT runs the whole string as one program name); Behaviour: Build ticked with target `build -b nucleo_h723zg -- -DEXTRA_CONF_FILE=debug.conf` (drop the `--` part for release), Clean `build -t pristine`. Indexer: autoconf.h as a CDT User Setting Entry (include file `build/zephyr/include/generated/zephyr/autoconf.h`; Zephyr ≥3.5 path, the Zephyr CubeIDE doc's is outdated), stored in workspace metadata, not the repo. Debug: File → Import → STM32 Cortex-M Executable → build/zephyr/zephyr.elf, Reset behaviour = Connect under reset (zephyr.launch, gitignored).
+- **Zephyr version pinned in `west.yml`** (2026-11-02): zephyr v4.4.0 + allowlist cmsis_6, hal_stm32, picolibc (what the build compiles), hal_st (sensors later), littlefs (P2). D:\Workspace keeps its own manifest (`[manifest] path = zephyr`) and is not affected; its module commits match the pin. A fresh `west init -l` checkout on Windows needs `git config --global core.longpaths true` (Zephyr has paths over 260 chars).
 - **`tools/zephyr_env.sh`** holds the gnuarmemb toolchain and STM32_Programmer_CLI paths (one place to update when CubeIDE changes).
 - **`west flash` needs `--cli <path>`** because STM32_Programmer_CLI lives in the CubeIDE plugins folder, not on PATH or in Program Files.
 - **Python on Windows defaults to cp1252.** Always pass `encoding="utf-8"` when editing repo files from Python; an earlier README edit got mis-encoded this way (fixed 2026-10-27).
+- **Project brief: docs/Board-Suitability-P1-P2.pdf** (mentor's cohort doc, gitignored). H723ZG suits P1 (gateway) and P2 (ledger logger). P1 targets: RAM ~48–59 KB (target 64 KB), ROM 384 KB; ENC28J60 on SPI + GPIO INT, BME280 on I2C, IWDG, UART console, Zephyr IP stack + HTTP server. P2 adds W25Q SPI NOR + littlefs, retained-RAM panic buffer, USB CDC shell (board's USB OTG HS on PA11/PA12, `zephyr_udc0`). It requires `ram_report`/`rom_report` output in docs/evidence/ram-rom/ and a written choice for DMA buffers: non-cached MPU region vs cache clean/invalidate, never DTCM.
+- **Memory map (H723, Zephyr):** ITCM 64 KB @0, DTCM 128 KB @0x20000000 (`zephyr,dtcm`, no DMA), AXI SRAM 320 KB @0x24000000 (`zephyr,sram`, cached), SRAM1/2 16 KB each @0x30000000/0x30004000 (SRAM2 = ETH DMA, non-cacheable), SRAM4 16 KB @0x38000000. D/I-cache, MPU and NOCACHE_MEMORY are on.
 - **`.vscode/` and `docs/*.pdf` are gitignored.** The ST PDFs were purged from history on 2026-10-27 (filter-branch + force-push), so commit IDs before that date changed. README lists the download names.
 
 ## Static analysis status (last run 2026-10-27)
@@ -46,7 +49,27 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - The old MPLAB 2.11 setup silently "passed" main.c/app_net.c: its preprocessor failed on Zephyr macros and produced an empty dump. misra_check.sh now rejects dumps under 1 MB.
 - `while (true)` in main.c is essentially Boolean, so it satisfies Rule 14.4.
 
+## Week-one deliverables (due Sat 2026-11-07)
+
+From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs on hardware", not "compiles".
+1. Register blinky: bare-metal registers, no HAL, **no RTOS**. `baremetal/blinky/` (own startup.c, linker script, register defines from RM0468/PM0253, HSI 64 MHz, polled SysTick; CMake+Ninja via build.sh). Builds clean, 460 B. **Done 2026-11-02:** flashed with `build.sh flash`, user confirmed all three LEDs at the right rates; ODR sampled over SWD (HOTPLUG) showed PB14/PE1 toggling.
+2. Zephyr blinky: done (LD1, src/main.c).
+3. I2C sensor (BME280), real readings: not started.
+4. ENC28J60 via Zephyr's driver: planned for 2026-11-02.
+5/7. Repo + README: clean build from a fresh clone, README states the board, toolchain version, build and flash. The brief says *public* repo; GitHub repo is currently PRIVATE (user's call). Fresh-clone build is untested; tools/zephyr_env.sh hardcodes this PC's CubeIDE paths.
+6. Pins & clocks note: LED pins, system clock, I2C pins, ENC28J60 SPI pins + clock.
+8. One-minute live demo.
+
+## Parts facts (from the data sheets in docs/)
+
+- **ENC28J60** (DS39662C): 3.1-3.6 V, inputs 5 V tolerant, SPI **mode 0 only** (SCK idle low), up to 20 MHz, needs a 25 MHz crystal (on the module), 10BASE-T only. INT output is active low (binding `int-gpios` required, `GPIO_ACTIVE_LOW`). Current up to 180 mA while transmitting (160 typ). Silicon errata (not in docs/) is said to require SCK >= 8 MHz: check before choosing `spi-max-frequency`.
+- **BME280** (rev 1.24): VDD 1.71-3.6 V, I2C up to 3.4 MHz. Address 0x76 (SDO to GND) or 0x77 (SDO to VDDIO); SDO must not float. CSB tied to VDDIO selects I2C. chip_id register 0xD0 reads 0x60 (a BMP280 reads 0x58: cheap modules are often BMP280s).
+- **Board buses for them (upstream DTS):** `arduino_spi` = SPI1: SCK PA5 (D13), MISO PA6 (D12), MOSI PB5 (D11), CS PD14 (D10), already `okay`. `arduino_i2c` = I2C1: SCL PB8 (D15), SDA PB9 (D14), 400 kHz, `okay`. MOSI is on PB5, not PA7, because PA7 is RMII CRS_DV.
+
 ## Open items
+
+- **Ethernet differs from the brief:** P1 wants the ENC28J60 over SPI (the onboard RJ45 is a stretch goal for after P1), but app_net.c uses the onboard MAC + LAN8742. Decided 2026-11-01: switch to ENC28J60, planned for 2026-11-02 (`microchip,enc28j60` driver, SPI + INT pin, disable `&mac`/`&mdio` in the overlay).
+- P1 parts not started: BME280 (I2C), IWDG, HTTP server, ram/rom reports in docs/evidence/ram-rom/, written DMA/cache choice.
 
 - Confirm F5 in VS Code end to end. The same chain is verified from the CLI on the board (see the session log); the Peripherals view is not tried yet.
 - Test Ethernet via a router (DHCP lease, `net ping <gateway>`); the direct-PC static path is tested.
@@ -55,6 +78,18 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
 
 ## Session log
+
+### 2026-11-02 (deliverable 1: register blinky)
+- Added baremetal/blinky: standalone, no HAL/RTOS/vendor headers. Register addresses cross-checked in RM0468 Table 7 (pdftotext shifts that table's peripheral names one row down: RCC is 0x58024400, GPIOB 0x58020400, GPIOE 0x58021000), Zephyr DTS and ST's stm32h723xx.h. No PWR_CR3 setup needed because sys_ck stays at the reset HSI 64 MHz (RM0468 6.8.4). Vector table as a struct (SP pointer + 15 handlers) avoids a data-to-function pointer cast. `-fno-tree-loop-distribute-patterns` keeps the startup loops from turning into memcpy/memset calls under -nostdlib. No make on this PC: CMake + Ninja.
+
+### 2026-11-02 (new docs)
+- Read the four new PDFs in docs/ (two cohort documents, ENC28J60 and BME280 data sheets). Added week-one deliverables and part facts above, and the files to CLAUDE.md's reference list.
+
+### 2026-11-02 (Zephyr pin)
+- Added west.yml (T2: app repo as manifest) pinning zephyr v4.4.0 with a 5-module allowlist. Validated with `west manifest --validate` in a scratch workspace (shared local clone, no download): resolves to the same commits as D:\Workspace. Not tested: a full `west update` + build in a fresh workspace (needs ~1 GB download).
+
+### 2026-11-01 (board suitability review)
+- Reviewed docs/Board-Suitability-P1-P2.pdf against the board and the build. The H723ZG fits. The current debug build (219,920 B flash, ~34 KB RAM release) is within the P1 budget. The ETH DMA buffers already follow the cache rule (non-cacheable SRAM2). Main gap: the brief wants ENC28J60, we use onboard ETH. User decided to switch, starting 2026-11-02.
 
 ### 2026-10-30 (rename, CubeIDE import)
 - Project renamed to **Eco-Connect IoT Gateway** (CMake `project(eco_connect_iot_gateway)`, README/CLAUDE titles). Repo folder, GitHub repo (kgsinh/eco-connect-gateway; old URL redirects) and CubeIDE project renamed `eco-connect-gateway`; after moving the folder, rebuild with `-p always` (CMake cache holds absolute paths).

@@ -83,6 +83,10 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 
 ## Session log
 
+### 2026-11-02 (VS Code tasks, CubeIDE check)
+- Checked the CubeIDE setup after today's changes: project files untouched since 2026-10-30, CubeIDE's build command builds the debug image (247,564 B) with the new zephyr_env.sh; user confirmed CubeIDE debugging works. After the src/ moves: refresh the project, re-set breakpoints.
+- tools/vscode/tasks.json (+ .vscode copy): added Bare-metal build, build + flash, and Serial monitor (miniterm, port prompt default COM5). README: VS Code tasks table, equivalent commands, serial monitor notes; fixed the CubeIDE line (Makefile project, not STM32 CMake Project).
+
 ### 2026-11-02 (deliverables 5/7: repo + README)
 - zephyr_env.sh made portable (env overrides, SDK detection with a real read, clear message when nothing is found); tested on this PC (gnuarmemb), a simulated readable SDK, a user GCC path and no tools. baremetal toolchain file also searches PATH. README: new intro, deliverables map, requirements/get code/toolchain/build/flash sections. Pristine builds of both programs OK in a fresh shell.
 

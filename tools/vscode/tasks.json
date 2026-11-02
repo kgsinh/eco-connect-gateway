@@ -1,6 +1,6 @@
 {
   // Template: copy to .vscode/tasks.json (.vscode/ is gitignored).
-  // Run with Ctrl+Shift+B or Terminal > Run Task.
+  // Run with Ctrl+Shift+B (default build) or Terminal > Run Task.
   "version": "2.0.0",
   "options": {
     "shell": {
@@ -28,6 +28,35 @@
       "type": "shell",
       "command": "source tools/zephyr_env.sh && west flash --cli \"$STM32_PROGRAMMER_CLI\"",
       "problemMatcher": []
+    },
+    {
+      "label": "Bare-metal: build",
+      "type": "shell",
+      "command": "baremetal/blinky/build.sh",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Bare-metal: build + flash",
+      "type": "shell",
+      "command": "baremetal/blinky/build.sh flash",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      // Interactive Zephyr shell. Exit with Ctrl+]. Only one program can hold the port.
+      "label": "Serial monitor",
+      "type": "shell",
+      "command": "python -m serial.tools.miniterm --filter direct ${input:comPort} 115200",
+      "presentation": { "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "comPort",
+      "type": "promptString",
+      "description": "ST-Link virtual COM port",
+      "default": "COM5"
     }
   ]
 }

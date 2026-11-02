@@ -168,6 +168,35 @@ baremetal/blinky/build.sh flash              # bare-metal blinky (builds, then f
 
 Each one replaces whatever is on the board. The Zephyr image runs an LED chase and prints a boot log on the console; the bare-metal one blinks the three LEDs at 1000/500/250 ms.
 
+## VS Code: build, flash and serial monitor
+
+Tasks live in `tools/vscode/tasks.json`; copy it to `.vscode/` once (already done on this PC). Run them with **Terminal → Run Task...** (or `Ctrl+Shift+P` → *Tasks: Run Task*). `Ctrl+Shift+B` runs the default build.
+
+| Task | What it does |
+|---|---|
+| Zephyr: build (release) | Pristine release build (default build task) |
+| Zephyr: build (debug) | Pristine debug build (`debug.conf`) |
+| Zephyr: flash | Flashes `build/zephyr/zephyr.elf` |
+| Bare-metal: build | Builds `baremetal/blinky` |
+| Bare-metal: build + flash | Builds and flashes the bare-metal blinky |
+| Serial monitor | Opens the console (asks for the port, default `COM5`) |
+
+The same from a Git Bash terminal, at the repo root:
+
+```
+source tools/zephyr_env.sh
+west build -p always -b nucleo_h723zg          # build (release)
+west flash --cli "$STM32_PROGRAMMER_CLI"       # flash the Zephyr app
+baremetal/blinky/build.sh flash                # build + flash the bare-metal blinky
+python -m serial.tools.miniterm --filter direct COM5 115200   # serial monitor
+```
+
+Serial monitor notes:
+- The port is the ST-Link virtual COM port, 115200 8N1. Find its number in PowerShell with `Get-CimInstance Win32_PnPEntity | ? Name -match 'COM\d+'` (look for "STMicroelectronics STLink Virtual COM Port").
+- Exit miniterm with `Ctrl+]`. Only one program can hold the port: close the monitor (or PuTTY, CubeIDE's console) before another tool opens it. Flashing does not need the port, so the monitor can stay open and shows the boot log after the reset.
+- `--filter direct` passes the shell's ANSI colour codes through; without it they print as `␛[..m`.
+- Useful shell commands: `net iface`, `net ping 192.168.50.1`, `sensor get bme280@76`, `i2c scan i2c@40005400`, `kernel threads`, `help`.
+
 ## Debug
 
 Step-by-step debugging in VS Code with the **Cortex-Debug** extension and ST's ST-LINK GDB server (both come with / via the CubeIDE install):
@@ -178,7 +207,7 @@ Step-by-step debugging in VS Code with the **Cortex-Debug** extension and ST's S
 
 **Attach (ST-LINK, no reset, no flash)** halts the firmware that's already running, which is useful when it hangs. The ELF in `build/` must match what's on the board.
 
-**STM32CubeIDE** also works as a debugger front end: import `build/zephyr/zephyr.elf` via File → Import → C/C++ → STM32 Cortex-M Executable, and set Reset behaviour to *Connect under reset*. To build in CubeIDE as well, start it with `tools/cubeide.sh` and import the repo as an STM32 CMake Project; see NOTES.md.
+**STM32CubeIDE** also works as a debugger front end: import `build/zephyr/zephyr.elf` via File → Import → C/C++ → STM32 Cortex-M Executable, and set Reset behaviour to *Connect under reset*. To build in CubeIDE as well, start it with `tools/cubeide.sh` and import the repo as an existing Makefile project with build command `west`; see NOTES.md for the exact settings.
 
 Without a debugger: a crash prints Zephyr's fatal-error dump (faulting PC, thread) on the console; resolve the PC with `arm-none-eabi-addr2line -e build/zephyr/zephyr.elf <pc>`. The shell has `kernel threads`, `kernel stacks` and `device list`.
 

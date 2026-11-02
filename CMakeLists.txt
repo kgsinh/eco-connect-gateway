@@ -6,11 +6,11 @@ project(eco_connect_iot_gateway)
 
 target_sources(app PRIVATE
   src/main.c
-  src/led/led_hal.c
-  src/led/led_cmsis.c
+  src/led/hal/led_hal.c
+  src/led/cmsis/led_cmsis.c
   src/net/app_net.c
   src/sensor/app_sensor.c
 )
 
-# Single include root: sources include "led/led_hal.h", "net/app_net.h"
+# Single include root: sources include "led/hal/led_hal.h", "net/app_net.h"
 target_include_directories(app PRIVATE src)

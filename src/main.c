@@ -8,16 +8,16 @@
  * | LED        | Pin  | Layer                              |
  * |------------|------|------------------------------------|
  * | LD1 green  | PB0  | Zephyr GPIO API (devicetree led0)  |
- * | LD2 yellow | PE1  | STM32Cube HAL (led/led_hal.c)      |
- * | LD3 red    | PB14 | CMSIS registers (led/led_cmsis.c)  |
+ * | LD2 yellow | PE1  | STM32Cube HAL (led/hal)            |
+ * | LD3 red    | PB14 | CMSIS registers (led/cmsis)        |
  */
 #include <stdbool.h>
 #include <stdint.h>
 #include <errno.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
-#include "led/led_hal.h"
-#include "led/led_cmsis.h"
+#include "led/hal/led_hal.h"
+#include "led/cmsis/led_cmsis.h"
 #include "net/app_net.h"
 #include "sensor/app_sensor.h"
 

@@ -9,8 +9,8 @@ LED chase: one LED on at a time, LD1 → LD2 → LD3, 250 ms per step. (The bare
 | LED | Pin | Driven by | Chase order |
 |---|---|---|---|
 | LD1 green | PB0 | Zephyr GPIO API (devicetree `led0`), `src/main.c` | 1st |
-| LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led/led_hal.c` | 2nd |
-| LD3 red | PB14 | CMSIS registers, `src/led/led_cmsis.c` | 3rd |
+| LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led/hal/led_hal.c` | 2nd |
+| LD3 red | PB14 | CMSIS registers, `src/led/cmsis/led_cmsis.c` | 3rd |
 
 **Ethernet** (`src/net/app_net.c`): on-board RMII Ethernet (LAN8742A PHY) via Zephyr's `eth_stm32_hal` driver. The board answers ping on two IPv4 addresses:
 
@@ -51,8 +51,8 @@ src/
   sensor/
     app_sensor.c/.h     BME280 thread: temperature, pressure, humidity every 2 s
   led/
-    led_hal.c/.h        LD2 via STM32Cube HAL
-    led_cmsis.c/.h      LD3 via CMSIS registers
+    hal/led_hal.c/.h      LD2 via STM32Cube HAL
+    cmsis/led_cmsis.c/.h  LD3 via CMSIS registers
 baremetal/blinky/       Register-only blinky: no HAL, no RTOS (own startup + linker script)
 docs/               Reference manuals (local only, see below)
 tools/              Build env, VS Code debug templates, static analysis, MISRA deviations

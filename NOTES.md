@@ -5,11 +5,11 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 ## Current architecture
 
 - **Single Zephyr app at the repo root** (Zephyr 4.4.0, west workspace `D:\Workspace`, board `nucleo_h723zg`). Zephyr owns startup, clocks, MPU, SysTick, IRQs and linking. The CubeIDE/CubeMX project was removed (it's in git history).
-- Source layout: `src/main.c`, `src/net/` (Ethernet/IPv4), `src/sensor/` (BME280), `src/led/` (HAL, CMSIS LED drivers); include root is `src/` (`#include "led/led_hal.h"`).
+- Source layout: `src/main.c`, `src/net/` (Ethernet/IPv4), `src/sensor/` (BME280), `src/led/hal/` and `src/led/cmsis/` (LD2/LD3 drivers); include root is `src/` (`#include "led/hal/led_hal.h"`).
 - Three API layers in one app, one LED each:
   - LD1 green PB0: Zephyr GPIO (`led0` DT alias) in `src/main.c`.
-  - LD2 yellow PE1: STM32Cube HAL GPIO in `src/led/led_hal.c`, every 500 ms. HAL comes from Zephyr's hal_stm32 module, enabled by `config APP_STM32_HAL_GPIO` → `select USE_STM32_HAL_GPIO` in `Kconfig`.
-  - LD3 red PB14: CMSIS registers in `src/led/led_cmsis.c`.
+  - LD2 yellow PE1: STM32Cube HAL GPIO in `src/led/hal/led_hal.c`, every 500 ms. HAL comes from Zephyr's hal_stm32 module, enabled by `config APP_STM32_HAL_GPIO` → `select USE_STM32_HAL_GPIO` in `Kconfig`.
+  - LD3 red PB14: CMSIS registers in `src/led/cmsis/led_cmsis.c`.
 - Main loop: LED chase, one LED on at a time, LD1 → LD2 → LD3, 250 ms per step (`led_toggle()` dispatches to the layer). Deliberately different from the bare-metal blinky (independent 1000/500/250 ms) so the running image is obvious.
 - `boards/nucleo_h723zg.overlay` disables `timers12`, `pwm12` and `/pwmleds`, so the Zephyr PWM driver doesn't claim PB14.
 - Clock (upstream board DTS): HSE 8 MHz (ST-Link MCO, bypass) → PLL1 550 MHz CPU, HCLK 275 MHz, APB 137.5 MHz. Console: USART3 (ST-Link VCOM).
@@ -82,7 +82,7 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 ## Session log
 
 ### 2026-11-02 (source folders)
-- src/ split by function: `net/`, `sensor/`, `led/`, with `src/` as the single include root. misra_check.sh now finds .c files recursively (`find src -name '*.c'`). Same image size (169,752 B); flashed, boots and reads the sensor.
+- src/ split by function: `net/`, `sensor/`, `led/hal/`, `led/cmsis/`, with `src/` as the single include root. misra_check.sh now finds .c files recursively (`find src -name '*.c'`). Same image size (169,752 B); flashed, boots and reads the sensor.
 
 ### 2026-11-02 (deliverable 3: BME280)
 - Added the BME280 (overlay node, prj.conf I2C/SENSOR + shells, app_sensor.c/.h). Flashed and tested: scan shows 0x76, readings every 2 s, `sensor get` agrees. CONFIG_REBOOT is off, so `kernel reboot cold` isn't available in the shell.

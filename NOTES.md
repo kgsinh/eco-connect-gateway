@@ -6,10 +6,10 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 
 - **Single Zephyr app at the repo root** (Zephyr 4.4.0, west workspace `D:\Workspace`, board `nucleo_h723zg`). Zephyr owns startup, clocks, MPU, SysTick, IRQs and linking. The CubeIDE/CubeMX project was removed (it's in git history).
 - Three API layers in one app, one LED each:
-  - LD1 green PB0: Zephyr GPIO (`led0` DT alias) in `src/main.c`, toggles every 1000 ms.
+  - LD1 green PB0: Zephyr GPIO (`led0` DT alias) in `src/main.c`.
   - LD2 yellow PE1: STM32Cube HAL GPIO in `src/led_hal.c`, every 500 ms. HAL comes from Zephyr's hal_stm32 module, enabled by `config APP_STM32_HAL_GPIO` → `select USE_STM32_HAL_GPIO` in `Kconfig`.
-  - LD3 red PB14: CMSIS registers in `src/led_cmsis.c`, every 250 ms.
-- Main loop: 250 ms `k_msleep` tick; LD3 every tick, LD2 every 2nd, LD1 every 4th.
+  - LD3 red PB14: CMSIS registers in `src/led_cmsis.c`.
+- Main loop: LED chase, one LED on at a time, LD1 → LD2 → LD3, 250 ms per step (`led_toggle()` dispatches to the layer). Deliberately different from the bare-metal blinky (independent 1000/500/250 ms) so the running image is obvious.
 - `boards/nucleo_h723zg.overlay` disables `timers12`, `pwm12` and `/pwmleds`, so the Zephyr PWM driver doesn't claim PB14.
 - Clock (upstream board DTS): HSE 8 MHz (ST-Link MCO, bypass) → PLL1 550 MHz CPU, HCLK 275 MHz, APB 137.5 MHz. Console: USART3 (ST-Link VCOM).
 - LED-only build was 21,168 B flash / 4,608 B RAM and was tested on the board (2026-10-27).
@@ -53,7 +53,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 
 From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs on hardware", not "compiles".
 1. Register blinky: bare-metal registers, no HAL, **no RTOS**. `baremetal/blinky/` (own startup.c, linker script, register defines from RM0468/PM0253, HSI 64 MHz, polled SysTick; CMake+Ninja via build.sh). Builds clean, 460 B. **Done 2026-11-02:** flashed with `build.sh flash`, user confirmed all three LEDs at the right rates; ODR sampled over SWD (HOTPLUG) showed PB14/PE1 toggling.
-2. Zephyr blinky: done (LD1, src/main.c).
+2. Zephyr blinky: **done 2026-11-02.** src/main.c runs an LED chase (LD1 → LD2 → LD3, 250 ms) across the three API layers, visibly different from the bare-metal pattern. Release build flashed with `west flash`; boot log on COM5 and the chase confirmed by the user.
 3. I2C sensor (BME280), real readings: not started.
 4. ENC28J60 via Zephyr's driver: planned for 2026-11-02.
 5/7. Repo + README: clean build from a fresh clone, README states the board, toolchain version, build and flash. The brief says *public* repo; GitHub repo is currently PRIVATE (user's call). Fresh-clone build is untested; tools/zephyr_env.sh hardcodes this PC's CubeIDE paths.

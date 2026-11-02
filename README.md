@@ -4,11 +4,13 @@ Zephyr application for the **NUCLEO-H723ZG** board that mixes three API layers i
 
 ## Status
 
-| LED | Pin | Driven by | Toggle period |
+LED chase: one LED on at a time, LD1 → LD2 → LD3, 250 ms per step. (The bare-metal blinky in `baremetal/blinky` blinks all three independently, so the running image is easy to tell apart.)
+
+| LED | Pin | Driven by | Chase order |
 |---|---|---|---|
-| LD1 green | PB0 | Zephyr GPIO API (devicetree `led0`), `src/main.c` | 1000 ms |
-| LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led_hal.c` | 500 ms |
-| LD3 red | PB14 | CMSIS registers, `src/led_cmsis.c` | 250 ms |
+| LD1 green | PB0 | Zephyr GPIO API (devicetree `led0`), `src/main.c` | 1st |
+| LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led_hal.c` | 2nd |
+| LD3 red | PB14 | CMSIS registers, `src/led_cmsis.c` | 3rd |
 
 **Ethernet** (`src/app_net.c`): on-board RMII Ethernet (LAN8742A PHY) via Zephyr's `eth_stm32_hal` driver. The board answers ping on two IPv4 addresses:
 

@@ -60,7 +60,7 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 3. I2C sensor (BME280), real readings: **done 2026-11-02.** 4-pin 3.3 V breakout on I2C1 (D15 SCL / D14 SDA, 3V3, GND), node `bme280@76` in the overlay, src/app_sensor.c logs T/P/H every 2 s from its own thread. On hardware: `i2c scan` finds only 0x76; humidity reads, so it is a real BME280 (0x60), not a BMP280. First readings: 28.6 C, 99.29 kPa, 34 %RH.
 4. ENC28J60 via Zephyr's driver: **done 2026-11-02.** Driver logs `ethernet@0: Initialized`; `net iface` shows carrier ON, 10 Mbit; PC adapter links at 10 Mbps half duplex; ping from the PC 6/6, 1 ms, TTL 64, ARP shows 00-04-a3-50-00-02 (tested on a temporary 169.254.50.2 address, see Things to know).
 5/7. Repo + README: clean build from a fresh clone, README states the board, toolchain version, build and flash. The brief says *public* repo; GitHub repo is currently PRIVATE (user's call). Fresh-clone build is untested; tools/zephyr_env.sh hardcodes this PC's CubeIDE paths.
-6. Pins & clocks note: LED pins, system clock, I2C pins, ENC28J60 SPI pins + clock.
+6. Pins & clocks note: **done 2026-11-02**, docs/pins-and-clocks.md (Zephyr and bare-metal clocks, LEDs, I2C1, SPI1 + 8.6 MHz SCK, console). Values from the board DTS, the overlay and RM0468 8.7.2/8.7.19/8.7.20.
 8. One-minute live demo.
 
 ## Parts facts (from the data sheets in docs/)

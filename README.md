@@ -40,6 +40,8 @@ See NOTES.md for current state, gotchas and open items, and CLAUDE.md for the ru
 
 ### Clock configuration
 
+Full pin and clock list (LEDs, I2C, SPI, console, bare-metal clock): [docs/pins-and-clocks.md](docs/pins-and-clocks.md).
+
 Set by Zephyr from the upstream board devicetree (`boards/st/nucleo_h723zg` in the Zephyr tree):
 
 | Clock | Source / setting | Frequency |

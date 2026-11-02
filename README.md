@@ -1,6 +1,17 @@
 # Eco-Connect IoT Gateway — NUCLEO-H723ZG
 
-Zephyr application for the **NUCLEO-H723ZG** board that mixes three API layers in one firmware: Zephyr APIs, STM32Cube HAL, and CMSIS register access. It serves as a workflow pilot for build, flash and static analysis before real work starts.
+IoT gateway on the **NUCLEO-H723ZG** (STM32H723ZG, Cortex-M7) running Zephyr 4.4.0. It reads a BME280 temperature/pressure/humidity sensor over I2C and is reachable over Ethernet through an ENC28J60 on SPI. The firmware mixes three API layers on purpose: Zephyr APIs, STM32Cube HAL and CMSIS register access, one LED each. A separate bare-metal blinky shows the same board driven from registers alone.
+
+## Week-one deliverables
+
+| # | Deliverable | Where | Tested on hardware |
+|---|---|---|---|
+| 1 | Register blinky, no HAL, no RTOS | [baremetal/blinky](baremetal/blinky) | LEDs at 1000/500/250 ms |
+| 2 | Zephyr blinky | [src/main.c](src/main.c) | LED chase LD1 → LD2 → LD3 |
+| 3 | I2C sensor, real readings | [src/sensor](src/sensor), BME280 on I2C1 | T/P/H logged every 2 s |
+| 4 | ENC28J60 via Zephyr's driver | [boards/nucleo_h723zg.overlay](boards/nucleo_h723zg.overlay), [src/net](src/net) | 10 Mbps link, ping replies |
+| 5/7 | Repo and README | this file: requirements, build, flash | |
+| 6 | Pins and clocks note | [docs/pins-and-clocks.md](docs/pins-and-clocks.md) | |
 
 ## Status
 
@@ -82,9 +93,24 @@ tools/              Build env, VS Code debug templates, static analysis, MISRA d
 - CMSIS device headers come via `<soc.h>`.
 - One owner per peripheral (per pin for GPIO): disable a devicetree node in the overlay when HAL/CMSIS takes it over.
 
-## Build
+## Requirements
 
-Zephyr version and modules are pinned in [west.yml](west.yml) (Zephyr v4.4.0 + cmsis_6, hal_stm32, picolibc, hal_st, littlefs). On this PC the existing west workspace at `D:\Workspace` is used (same commits). On a new machine, create a workspace from the pin:
+Versions this repo is built and tested with:
+
+| Item | Version / note |
+|---|---|
+| Board | NUCLEO-H723ZG (STM32H723ZG, Cortex-M7), USB to the ST-Link connector |
+| Zephyr | v4.4.0, pinned with its modules in [west.yml](west.yml) |
+| west | 1.5.0 (`pip install west`) |
+| CMake / Ninja | 4.4.3 / 1.13.2 (CMake 3.20 or newer is enough) |
+| Python | 3.14 (needs Zephyr's `scripts/requirements.txt`) |
+| Toolchain | Arm GCC 14.3.1, "GNU Tools for STM32 14.3.rel1" from STM32CubeIDE 1.17.0. The Zephyr SDK or any Arm GNU toolchain also works. |
+| Flashing | STM32CubeProgrammer 2.23.0 (`STM32_Programmer_CLI`), here the copy inside STM32CubeIDE |
+| Shell | Git Bash on Windows, or bash on Linux/macOS |
+
+## Get the code
+
+Fresh workspace from the pinned versions (any empty folder):
 
 ```
 git config --global core.longpaths true   # Windows: Zephyr has paths over 260 chars
@@ -92,24 +118,55 @@ mkdir zephyr-ws && cd zephyr-ws
 git clone https://github.com/kgsinh/eco-connect-gateway
 west init -l eco-connect-gateway
 west update
+pip install -r zephyr/scripts/requirements.txt
+cd eco-connect-gateway
 ```
 
-Until the Zephyr SDK is usable, builds use CubeIDE's Arm GCC; `tools/zephyr_env.sh` sets that up (paths are for this PC's CubeIDE install):
+On the development PC the existing workspace at `D:\Workspace` is used instead; it is on the same commits.
+
+## Toolchain setup
+
+`tools/zephyr_env.sh` selects the toolchain and the programmer. Source it once per shell, from the repo root:
 
 ```
 source tools/zephyr_env.sh
-west build -p always -b nucleo_h723zg                                   # release (-Os)
-west build -p always -b nucleo_h723zg -- -DEXTRA_CONF_FILE=debug.conf  # debug
 ```
 
-Output: `build/zephyr/zephyr.elf` (about 147 KB flash, 34 KB RAM with networking and the shell).
+It uses, in this order: `GNUARMEMB_TOOLCHAIN_PATH` if set (root of an Arm GNU toolchain), a readable Zephyr SDK from `ZEPHYR_SDK_INSTALL_DIR`, then STM32CubeIDE's GCC under `CUBEIDE_PLUGINS`. The programmer comes from `STM32_PROGRAMMER_CLI`, CubeIDE, or `PATH`. The defaults match this PC's CubeIDE 1.17.0 install. On another machine, export your own paths before sourcing, for example:
+
+```
+export GNUARMEMB_TOOLCHAIN_PATH="/opt/arm-gnu-toolchain-14.3.rel1"
+export STM32_PROGRAMMER_CLI="/opt/st/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+source tools/zephyr_env.sh
+```
+
+## Build
+
+Zephyr application (the gateway):
+
+```
+west build -p always -b nucleo_h723zg                                   # release (-Os)
+west build -p always -b nucleo_h723zg -- -DEXTRA_CONF_FILE=debug.conf  # debug (-Og, asserts)
+```
+
+Output: `build/zephyr/zephyr.elf`, about 165 KB flash and 40 KB RAM (release). Both variants use `build/`; `grep DEBUG_OPTIMIZATIONS build/zephyr/.config` shows which one is there.
+
+Bare-metal register blinky (no Zephyr, CMake + Ninja):
+
+```
+baremetal/blinky/build.sh            # -> baremetal/blinky/build/blinky.elf, 460 bytes
+```
 
 ## Flash
 
+Check the probe first: `"$STM32_PROGRAMMER_CLI" -l st-link` (`No ST-Link detected!` means the board is not connected).
+
 ```
-source tools/zephyr_env.sh
-west flash --cli "$STM32_PROGRAMMER_CLI"
+west flash --cli "$STM32_PROGRAMMER_CLI"     # Zephyr application
+baremetal/blinky/build.sh flash              # bare-metal blinky (builds, then flashes)
 ```
+
+Each one replaces whatever is on the board. The Zephyr image runs an LED chase and prints a boot log on the console; the bare-metal one blinks the three LEDs at 1000/500/250 ms.
 
 ## Debug
 

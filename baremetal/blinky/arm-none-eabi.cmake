@@ -1,5 +1,5 @@
-# CMake toolchain file: Arm GNU toolchain from $GNUARMEMB_TOOLCHAIN_PATH
-# (set by tools/zephyr_env.sh: CubeIDE's arm-none-eabi-gcc).
+# CMake toolchain file: Arm GNU toolchain from $GNUARMEMB_TOOLCHAIN_PATH/bin
+# (tools/zephyr_env.sh sets it to CubeIDE's copy on this PC), else from PATH.
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)
 

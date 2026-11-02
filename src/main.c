@@ -8,18 +8,18 @@
  * | LED        | Pin  | Layer                              |
  * |------------|------|------------------------------------|
  * | LD1 green  | PB0  | Zephyr GPIO API (devicetree led0)  |
- * | LD2 yellow | PE1  | STM32Cube HAL (led_hal.c)          |
- * | LD3 red    | PB14 | CMSIS registers (led_cmsis.c)      |
+ * | LD2 yellow | PE1  | STM32Cube HAL (led/led_hal.c)      |
+ * | LD3 red    | PB14 | CMSIS registers (led/led_cmsis.c)  |
  */
 #include <stdbool.h>
 #include <stdint.h>
 #include <errno.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
-#include "led_hal.h"
-#include "led_cmsis.h"
-#include "app_net.h"
-#include "app_sensor.h"
+#include "led/led_hal.h"
+#include "led/led_cmsis.h"
+#include "net/app_net.h"
+#include "sensor/app_sensor.h"
 
 #define TICK_MS    250
 #define LED_COUNT  3U

@@ -5,16 +5,17 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 ## Current architecture
 
 - **Single Zephyr app at the repo root** (Zephyr 4.4.0, west workspace `D:\Workspace`, board `nucleo_h723zg`). Zephyr owns startup, clocks, MPU, SysTick, IRQs and linking. The CubeIDE/CubeMX project was removed (it's in git history).
+- Source layout: `src/main.c`, `src/net/` (Ethernet/IPv4), `src/sensor/` (BME280), `src/led/` (HAL, CMSIS LED drivers); include root is `src/` (`#include "led/led_hal.h"`).
 - Three API layers in one app, one LED each:
   - LD1 green PB0: Zephyr GPIO (`led0` DT alias) in `src/main.c`.
-  - LD2 yellow PE1: STM32Cube HAL GPIO in `src/led_hal.c`, every 500 ms. HAL comes from Zephyr's hal_stm32 module, enabled by `config APP_STM32_HAL_GPIO` → `select USE_STM32_HAL_GPIO` in `Kconfig`.
-  - LD3 red PB14: CMSIS registers in `src/led_cmsis.c`.
+  - LD2 yellow PE1: STM32Cube HAL GPIO in `src/led/led_hal.c`, every 500 ms. HAL comes from Zephyr's hal_stm32 module, enabled by `config APP_STM32_HAL_GPIO` → `select USE_STM32_HAL_GPIO` in `Kconfig`.
+  - LD3 red PB14: CMSIS registers in `src/led/led_cmsis.c`.
 - Main loop: LED chase, one LED on at a time, LD1 → LD2 → LD3, 250 ms per step (`led_toggle()` dispatches to the layer). Deliberately different from the bare-metal blinky (independent 1000/500/250 ms) so the running image is obvious.
 - `boards/nucleo_h723zg.overlay` disables `timers12`, `pwm12` and `/pwmleds`, so the Zephyr PWM driver doesn't claim PB14.
 - Clock (upstream board DTS): HSE 8 MHz (ST-Link MCO, bypass) → PLL1 550 MHz CPU, HCLK 275 MHz, APB 137.5 MHz. Console: USART3 (ST-Link VCOM).
 - LED-only build was 21,168 B flash / 4,608 B RAM and was tested on the board (2026-10-27).
-- **BME280** (`src/app_sensor.c`): Zephyr `bosch,bme280` driver on I2C1 at 0x76, own thread (prio 7, 1 KB static stack), logs `T .. C  P .. kPa  H .. %RH` every 2 s without float printf (milli split). `app_sensor_start()` returns -ENODEV and logs if the sensor doesn't probe; the rest keeps running. I2C and sensor shells enabled for bring-up (`i2c scan i2c@40005400`, `sensor get bme280@76`). Release build 169,752 B flash, 42,112 B RAM.
-- **Ethernet + IPv4** (`src/app_net.c`): Zephyr `eth_stm32_hal` driver (HAL ETH API v2, selects USE_STM32_HAL_ETH itself) + generic MII PHY driver for the LAN8742 at MDIO address 0, RMII pins from the board DTS. `app_net_start()` (called from main after LED init) first adds a static address `192.168.50.2/24` (`APP_NET_STATIC_IPV4_ADDR/_NETMASK` in the app Kconfig; empty = off) for a direct PC cable, with the PC set to 192.168.50.1/24. It then starts DHCPv4 without blocking (for router use; `NET_IF_UNICAST_IPV4_ADDR_COUNT=2` so both addresses fit) and logs IP/netmask/gateway/lease on `NET_EVENT_IPV4_ADDR_ADD`. Ping replies come from the IPv4 stack. The net shell is on the console (`net iface`, `net ping`, `net arp`). Build: 147,448 B flash, 33,984 B RAM.
+- **BME280** (`src/sensor/app_sensor.c`): Zephyr `bosch,bme280` driver on I2C1 at 0x76, own thread (prio 7, 1 KB static stack), logs `T .. C  P .. kPa  H .. %RH` every 2 s without float printf (milli split). `app_sensor_start()` returns -ENODEV and logs if the sensor doesn't probe; the rest keeps running. I2C and sensor shells enabled for bring-up (`i2c scan i2c@40005400`, `sensor get bme280@76`). Release build 169,752 B flash, 42,112 B RAM.
+- **Ethernet + IPv4** (`src/net/app_net.c`): Zephyr `eth_stm32_hal` driver (HAL ETH API v2, selects USE_STM32_HAL_ETH itself) + generic MII PHY driver for the LAN8742 at MDIO address 0, RMII pins from the board DTS. `app_net_start()` (called from main after LED init) first adds a static address `192.168.50.2/24` (`APP_NET_STATIC_IPV4_ADDR/_NETMASK` in the app Kconfig; empty = off) for a direct PC cable, with the PC set to 192.168.50.1/24. It then starts DHCPv4 without blocking (for router use; `NET_IF_UNICAST_IPV4_ADDR_COUNT=2` so both addresses fit) and logs IP/netmask/gateway/lease on `NET_EVENT_IPV4_ADDR_ADD`. Ping replies come from the IPv4 stack. The net shell is on the console (`net iface`, `net ping`, `net arp`). Build: 147,448 B flash, 33,984 B RAM.
 
 ## Things to know
 
@@ -79,6 +80,9 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
 
 ## Session log
+
+### 2026-11-02 (source folders)
+- src/ split by function: `net/`, `sensor/`, `led/`, with `src/` as the single include root. misra_check.sh now finds .c files recursively (`find src -name '*.c'`). Same image size (169,752 B); flashed, boots and reads the sensor.
 
 ### 2026-11-02 (deliverable 3: BME280)
 - Added the BME280 (overlay node, prj.conf I2C/SENSOR + shells, app_sensor.c/.h). Flashed and tested: scan shows 0x76, readings every 2 s, `sensor get` agrees. CONFIG_REBOOT is off, so `kernel reboot cold` isn't available in the shell.

@@ -15,7 +15,7 @@
 # tools/misra_filter.py.
 #
 # Usage (from project root, Git Bash):  tools/misra_check.sh [files...]
-# Default: every .c file in src/. Takes ~6-7 min for src/ (dumps are 250-330 MB
+# Default: every .c file under src/. Takes ~6-7 min for src/ (dumps are 250-330 MB
 # each and are deleted afterwards).
 # Exit code: 0 = clean, 1 = findings remain, 2 = tool/setup error.
 set -u
@@ -42,7 +42,7 @@ mapfile -t flags < <(python tools/analysis_flags.py) || exit 2
 if [ "$#" -gt 0 ]; then
     files=("$@")
 else
-    files=(src/*.c)
+    mapfile -t files < <(find src -name '*.c' | sort)
 fi
 
 dumps=("${files[@]/%/.dump}")

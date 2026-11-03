@@ -63,6 +63,10 @@ Set by Zephyr from the upstream board devicetree (`boards/st/nucleo_h723zg` in t
 | HCLK (AHB) | SYSCLK / 2 | 275 MHz |
 | APB1/2/3/4 | HCLK / 2 | 137.5 MHz |
 
+## Architecture
+
+Diagrams of how the parts connect, the boot and runtime sequence, and the build: [docs/architecture.md](docs/architecture.md).
+
 ## Project layout
 
 ```

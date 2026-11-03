@@ -8,7 +8,6 @@ target_sources(app PRIVATE
   src/main.c
   src/led/hal/led_hal.c
   src/led/cmsis/led_cmsis.c
-  src/led/ext/led_ext.c
   src/net/app_net.c
   src/sensor/app_sensor.c
 )

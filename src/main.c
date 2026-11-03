@@ -10,8 +10,6 @@
  * | LD1 green  | PB0  | Zephyr GPIO API (devicetree led0)  |
  * | LD2 yellow | PE1  | STM32Cube HAL (led/hal)            |
  * | LD3 red    | PB14 | CMSIS registers (led/cmsis)        |
- *
- * An external LED on D7 blinks at 1 Hz from a k_timer (led/ext).
  */
 #include <stdbool.h>
 #include <stdint.h>
@@ -20,12 +18,11 @@
 #include <zephyr/drivers/gpio.h>
 #include "led/hal/led_hal.h"
 #include "led/cmsis/led_cmsis.h"
-#include "led/ext/led_ext.h"
 #include "net/app_net.h"
 #include "sensor/app_sensor.h"
 
-#define TICK_MS   250
-#define LED_COUNT 3U
+#define TICK_MS    250
+#define LED_COUNT  3U
 
 static const struct gpio_dt_spec ld1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 
@@ -76,9 +73,6 @@ int main(void)
 
 	led_hal_init();
 	led_cmsis_init();
-
-	/* A missing external LED is not fatal; the gateway keeps running */
-	(void)led_ext_start();
 
 	/* Returns before the DHCP lease, so the LEDs keep running meanwhile */
 	(void)app_net_start();

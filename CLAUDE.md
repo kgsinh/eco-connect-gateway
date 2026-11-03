@@ -8,7 +8,6 @@ Read NOTES.md at the start of every session: it holds the current architecture, 
 - User LEDs: LD1 green PB0, LD2 yellow PE1, LD3 red PB14. User button PC13. Console: USART3 (ST-Link VCOM).
 - Ethernet: ENC28J60 module (10BASE-T, 3.3 V) on SPI1: SCK PA5/D13, MISO PA6/D12, MOSI PB5/D11, CS PD14/D10, INT PD15/D9. The on-board RMII MAC + LAN8742A is disabled in the overlay (stretch goal for later).
 - Sensor: BME280 breakout on I2C1 (SCL PB8/D15, SDA PB9/D14), address 0x76.
-- External LED: D7/PG12 → 330 Ω → LED → GND (breadboard), devicetree alias `led-ext`, driven by src/led/ext.
 - Board definition (pins, clocks, console) is upstream: D:\Workspace\zephyr\boards\st\nucleo_h723zg. Read it before changing hardware config; override in boards/nucleo_h723zg.overlay, never edit the upstream tree.
 
 ## Architecture
@@ -30,7 +29,6 @@ Rules for mixing:
 - MISRA C:2025 mandatory + required rules apply to our code (src/) regardless of layer used.
 - No dynamic memory allocation (malloc/free, k_malloc).
 - Zephyr code style: tabs, braces on every block.
-- Formatting: `.clang-format` at the repo root is Zephyr's own (copied from zephyr/.clang-format). New and changed C files are formatted with it (VS Code: Shift+Alt+F uses it automatically). Existing files are not bulk-reformatted yet; do that as its own commit.
 - Comments: Doxygen style, written the way an experienced firmware engineer would. Applies to all our code (src/, baremetal/).
   - Every .c/.h starts with `/** @file` + `@brief` (one line), then a short paragraph only if the file needs context (ownership, clock, constraints).
   - Public functions are documented once, in the header: `@brief`, `@param`, `@return` (`@retval` for specific error codes), `@note` / `@pre` only when they carry real information. Static functions get a `/** @brief ... */` in the .c. Don't repeat the header doc in the .c.

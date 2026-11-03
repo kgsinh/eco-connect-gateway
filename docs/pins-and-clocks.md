@@ -35,9 +35,8 @@ The PLL, voltage scaling and supply configuration stay at their reset values. RM
 | LD1 green | PB0 | Zephyr GPIO API (`led0` alias) | registers, 1000 ms |
 | LD2 yellow | PE1 | STM32Cube HAL GPIO | registers, 500 ms |
 | LD3 red | PB14 | CMSIS registers | registers, 250 ms |
-| External LED (D7) | PG12 | Zephyr GPIO API from a `k_timer`, 1 Hz | not used |
 
-All are active high. The external LED is on a breadboard: PG12 → 330 Ω → LED → GND (≈ 4 mA), devicetree alias `led-ext`. The Zephyr app runs a chase, one LED on at a time, 250 ms per step. The board DTS routes PB14 to TIM12 PWM, so the overlay disables `timers12`, `pwm12` and `pwmleds` to keep the pin free for the CMSIS code.
+All three are active high. The Zephyr app runs a chase, one LED on at a time, 250 ms per step. The board DTS routes PB14 to TIM12 PWM, so the overlay disables `timers12`, `pwm12` and `pwmleds` to keep the pin free for the CMSIS code.
 
 ## I2C: BME280
 

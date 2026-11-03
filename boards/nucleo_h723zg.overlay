@@ -66,23 +66,3 @@
 		reg = <0x76>;
 	};
 };
-
-/*
- * External LED on D7 (PG12): 330 ohm resistor to an LED to GND, so active high.
- * Driven by src/led/ext through the Zephyr GPIO API.
- */
-/ {
-	ext_leds {
-		compatible = "gpio-leds";
-
-		ext_led: ext_led {
-			gpios = <&gpiog 12 GPIO_ACTIVE_HIGH>;
-			label = "External LED D7";
-		};
-	};
-
-	aliases {
-		led-ext = &ext_led;
-	};
-};
-

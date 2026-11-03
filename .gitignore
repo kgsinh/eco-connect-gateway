@@ -25,3 +25,6 @@ docs/misra-*-rule-texts.txt
 # cppcheck intermediate files
 *.dump
 *.ctu-info
+
+# VS Code multi-root workspace: paths depend on this PC's west workspace layout
+*.code-workspace

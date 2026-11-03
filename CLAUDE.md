@@ -101,6 +101,6 @@ Located in /docs (gitignored, local only — see README for download names):
 - Board manual (Nucleo-144 user manual UM2407: jumpers, solder bridges, Ethernet/LED wiring) is not in docs/ yet — download it before relying on board-level wiring details; until then the Zephyr board DTS is the reference.
 - Board-Suitability-P1-P2.pdf, ESC-Embedded-Software-Design-Mentor.pdf (7-stage method), Presentation - Embedded Design Cohort - Batch 01.pdf (week-one deliverables) — mentor's cohort material; the requirements this project is built against.
 - Arm-Cortex-M7-Processor-Datasheet.pdf — Arm's Cortex-M7 processor overview.
-- enc28j60.pdf — ENC28J60 data sheet (DS39662C). bst-bme280-ds002.pdf — BME280 data sheet (rev 1.24).
+- enc28j60.pdf — ENC28J60 data sheet (DS39662C). 80349c.pdf — ENC28J60 silicon errata (DS80349C). bst-bme280-ds002.pdf — BME280 data sheet (rev 1.24).
 - MISRA-C-2025.pdf — MISRA C:2025 (licensed to the user personally; local only). Use for rule rationale and compliant examples.
 Read the relevant document before writing new CMSIS-level code for anything not touched yet this session — don't rely on memory for register addresses or bit definitions. For Zephyr APIs, read the headers/docs in D:\Workspace\zephyr.

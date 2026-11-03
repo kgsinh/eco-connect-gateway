@@ -15,7 +15,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - Clock (upstream board DTS): HSE 8 MHz (ST-Link MCO, bypass) → PLL1 550 MHz CPU, HCLK 275 MHz, APB 137.5 MHz. Console: USART3 (ST-Link VCOM).
 - LED-only build was 21,168 B flash / 4,608 B RAM and was tested on the board (2026-10-27).
 - **BME280** (`src/sensor/app_sensor.c`): Zephyr `bosch,bme280` driver on I2C1 at 0x76, own thread (prio 7, 1 KB static stack), logs `T .. C  P .. kPa  H .. %RH` every 2 s without float printf (milli split). `app_sensor_start()` returns -ENODEV and logs if the sensor doesn't probe; the rest keeps running. I2C and sensor shells enabled for bring-up (`i2c scan i2c@40005400`, `sensor get bme280@76`). Release build 169,752 B flash, 42,112 B RAM.
-- **Ethernet + IPv4** (`src/net/app_net.c`): ENC28J60 on SPI1 (Zephyr `microchip,enc28j60` driver, node `enc28j60: ethernet@0` in the overlay): CS PD14/D10, INT PD15/D9 active low, SPI max 10 MHz → 8.6 MHz actual (PLL1_Q 137.5 MHz / 16; errata wants ≥ 8 MHz), MAC `00:04:A3:50:00:02` (driver forces Microchip's OUI on the first 3 bytes). 10BASE-T half duplex, no autonegotiation. On-board MAC, MDIO and `eth_phy` are disabled in the overlay. `app_net_start()` is unchanged: static `192.168.50.2/24` + non-blocking DHCPv4, logs the lease. Net shell on the console. Release build 164,668 B flash, 40 KB RAM.
+- **Ethernet + IPv4** (`src/net/app_net.c`): ENC28J60 on SPI1 (Zephyr `microchip,enc28j60` driver, node `enc28j60: ethernet@0` in the overlay): CS PD14/D10, INT PD15/D9 active low, SPI max 10 MHz → 8.6 MHz actual (PLL1_Q 137.5 MHz / 16; meets the ≥ 8 MHz errata rule for old B1/B4 silicon), MAC `00:04:A3:50:00:02` (driver forces Microchip's OUI on the first 3 bytes). 10BASE-T half duplex, no autonegotiation. On-board MAC, MDIO and `eth_phy` are disabled in the overlay. `app_net_start()` is unchanged: static `192.168.50.2/24` + non-blocking DHCPv4, logs the lease. Net shell on the console. Release build 168,588 B flash, 40 KB RAM (with the GPIO shell).
 
 ## Things to know
 
@@ -68,7 +68,7 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 
 ## Parts facts (from the data sheets in docs/)
 
-- **ENC28J60** (DS39662C): 3.1-3.6 V, inputs 5 V tolerant, SPI **mode 0 only** (SCK idle low), up to 20 MHz, needs a 25 MHz crystal (on the module), 10BASE-T only. INT output is active low (binding `int-gpios` required, `GPIO_ACTIVE_LOW`). Current up to 180 mA while transmitting (160 typ). Silicon errata (not in docs/) is said to require SCK >= 8 MHz: check before choosing `spi-max-frequency`.
+- **ENC28J60** (DS39662C): 3.1-3.6 V, inputs 5 V tolerant, SPI **mode 0 only** (SCK idle low), up to 20 MHz, needs a 25 MHz crystal (on the module), 10BASE-T only. INT output is active low (binding `int-gpios` required, `GPIO_ACTIVE_LOW`). Current up to 180 mA while transmitting (160 typ). Silicon errata docs/80349c.pdf (DS80349C) issue 1: SPI below 8 MHz makes MAC register access unreliable, **only on revisions B1 and B4** (B5/B7 unaffected). Our module's revision is unknown (EREVID, bank 3 reg 0x12); 8.6 MHz is safe for all.
 - **BME280** (rev 1.24): VDD 1.71-3.6 V, I2C up to 3.4 MHz. Address 0x76 (SDO to GND) or 0x77 (SDO to VDDIO); SDO must not float. CSB tied to VDDIO selects I2C. chip_id register 0xD0 reads 0x60 (a BMP280 reads 0x58: cheap modules are often BMP280s).
 - **Board buses for them (upstream DTS):** `arduino_spi` = SPI1: SCK PA5 (D13), MISO PA6 (D12), MOSI PB5 (D11), CS PD14 (D10), already `okay`. `arduino_i2c` = I2C1: SCL PB8 (D15), SDA PB9 (D14), 400 kHz, `okay`. MOSI is on PB5, not PA7, because PA7 is RMII CRS_DV.
 
@@ -88,6 +88,9 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
 
 ## Session log
+
+### 2026-11-03 (animation audit, errata check)
+- Audited the animation against code, build and datasheets: fixed the boot explanation (the 12-79 ms gap is the BME280 driver waiting for the first conversion, 70 ms typ / 80.6 ms max from datasheet 9.1 at T×2/P×16/H×16) and six smaller inaccuracies. User added the ENC28J60 errata (docs/80349c.pdf): the 8 MHz SPI minimum applies only to B1/B4 silicon; corrected the overlay comment, pins note and NOTES, which had stated it as a general rule.
 
 ### 2026-11-03 (external LED added, then removed)
 - User wrote an external LED on D7/PG12 step by step (shell test with `CONFIG_GPIO_SHELL`, overlay node + alias `led-ext`, src/led/ext with a `k_timer`), tested at 1 Hz, committed 0f7daf0. Then removed it: LD1 already shows the Zephyr GPIO API, so it added nothing to the gateway. Reverted the commit (no history rewrite); kept `CONFIG_GPIO_SHELL=y`. D7/PG12 is free again. `.clang-format` went with the revert and was added back on its own right after.

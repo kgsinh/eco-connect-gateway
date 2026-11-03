@@ -68,7 +68,7 @@ All three are active high. The Zephyr app runs a chase, one LED on at a time, 25
 | Peripheral | SPI1, mode 0 (the ENC28J60 supports only mode 0,0, DS39662C 4.1) |
 | Kernel clock | PLL1_Q, 137.5 MHz (SPI123SEL reset default, RM0468 8.7.19) |
 | SCK | 137.5 MHz / 16 = 8.6 MHz (`spi-max-frequency` = 10 MHz; the prescaler is a power of 2) |
-| Why 8.6 MHz | ENC28J60 maximum is 20 MHz; its silicon errata asks for at least 8 MHz; a lower clock tolerates jumper wires |
+| Why 8.6 MHz | ENC28J60 maximum is 20 MHz; a lower clock tolerates jumper wires. Errata DS80349C issue 1 asks for at least 8 MHz on silicon revisions B1/B4 only (current B7 is not affected), and 8.6 MHz meets it anyway |
 | ENC28J60 clock | 25 MHz crystal on the module |
 | Supply | 3V3 (3.1-3.6 V, no regulator on the 10-pin module) |
 

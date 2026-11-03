@@ -44,8 +44,9 @@
 		reg = <0>;   /* cs-gpios[0] from the board DTS: PD14 / D10 */
 		/*
 		 * SPI1 kernel clock is PLL1_Q = 137.5 MHz with power-of-2 prescalers:
-		 * a 10 MHz limit selects /16 = 8.6 MHz, above the 8 MHz minimum in the
-		 * ENC28J60 silicon errata and conservative for jumper wires.
+		 * a 10 MHz limit selects /16 = 8.6 MHz. That is conservative for jumper
+		 * wires and still meets the 8 MHz minimum that ENC28J60 errata DS80349C
+		 * issue 1 sets for old silicon (B1, B4; current B7 is not affected).
 		 */
 		spi-max-frequency = <DT_FREQ_M(10)>;
 		/* INT is active low (DS39662C 12.0) */

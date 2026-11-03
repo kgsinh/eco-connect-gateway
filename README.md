@@ -22,6 +22,7 @@ LED chase: one LED on at a time, LD1 → LD2 → LD3, 250 ms per step. (The bare
 | LD1 green | PB0 | Zephyr GPIO API (devicetree `led0`), `src/main.c` | 1st |
 | LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led/hal/led_hal.c` | 2nd |
 | LD3 red | PB14 | CMSIS registers, `src/led/cmsis/led_cmsis.c` | 3rd |
+| External LED | PG12 (D7) | Zephyr GPIO API + `k_timer`, `src/led/ext/led_ext.c` | not in the chase: 1 Hz on its own |
 
 **Ethernet** (`src/net/app_net.c`): ENC28J60 module on SPI1 (10BASE-T) via Zephyr's `microchip,enc28j60` driver; the on-board RMII Ethernet is disabled in the overlay. The board answers ping on two IPv4 addresses:
 
@@ -44,6 +45,8 @@ ENC28J60 wiring (3.3 V module, no regulator):
 | RESET, WOL, CLKOUT | not connected (RESET has an internal pull-up) | — |
 
 BME280 wiring (3.3 V breakout): VCC to 3V3, GND to GND, SCL to D15 (PB8), SDA to D14 (PB9). I2C address 0x76.
+
+External LED wiring: D7 (PG12) to a 330 Ω resistor to the LED anode (long leg); cathode to GND. About 4 mA. Devicetree alias `led-ext`.
 
 **Console:** ST-Link virtual COM port, 115200 8N1. It shows boot logs and the Zephyr shell (`uart:~$`; try `net iface`, `net ping <ip>`, `help`). The shell uses ANSI colour/cursor codes, so use a terminal that understands them: `python -m serial.tools.miniterm --filter direct COMx 115200` or PuTTY. Plain miniterm shows them as `␛[..m`.
 
@@ -81,6 +84,7 @@ src/
   led/
     hal/led_hal.c/.h      LD2 via STM32Cube HAL
     cmsis/led_cmsis.c/.h  LD3 via CMSIS registers
+    ext/led_ext.c/.h      External LED on D7, toggled by a kernel timer
 baremetal/blinky/       Register-only blinky: no HAL, no RTOS (own startup + linker script)
 docs/               Reference manuals (local only, see below)
 tools/              Build env, VS Code debug templates, static analysis, MISRA deviations
@@ -132,7 +136,7 @@ On the development PC the existing workspace at `D:\Workspace` is used instead; 
 source tools/zephyr_env.sh
 ```
 
-It uses, in this order: `GNUARMEMB_TOOLCHAIN_PATH` if set (root of an Arm GNU toolchain), a readable Zephyr SDK from `ZEPHYR_SDK_INSTALL_DIR`, then STM32CubeIDE's GCC under `CUBEIDE_PLUGINS`. The programmer comes from `STM32_PROGRAMMER_CLI`, CubeIDE, or `PATH`. The defaults match this PC's CubeIDE 1.17.0 install. On another machine, export your own paths before sourcing, for example:
+The script is bash; from fish (or PowerShell), run `bash` first or use the VS Code tasks. It uses, in this order: `GNUARMEMB_TOOLCHAIN_PATH` if set (root of an Arm GNU toolchain), a readable Zephyr SDK from `ZEPHYR_SDK_INSTALL_DIR`, then STM32CubeIDE's GCC under `CUBEIDE_PLUGINS`. The programmer comes from `STM32_PROGRAMMER_CLI`, CubeIDE, or `PATH`. The defaults match this PC's CubeIDE 1.17.0 install. On another machine, export your own paths before sourcing, for example:
 
 ```
 export GNUARMEMB_TOOLCHAIN_PATH="/opt/arm-gnu-toolchain-14.3.rel1"
@@ -149,7 +153,7 @@ west build -p always -b nucleo_h723zg                                   # releas
 west build -p always -b nucleo_h723zg -- -DEXTRA_CONF_FILE=debug.conf  # debug (-Og, asserts)
 ```
 
-Output: `build/zephyr/zephyr.elf`, about 165 KB flash and 40 KB RAM (release). Both variants use `build/`; `grep DEBUG_OPTIMIZATIONS build/zephyr/.config` shows which one is there.
+Output: `build/zephyr/zephyr.elf`, about 169 KB flash and 41 KB RAM (release). Both variants use `build/`; `grep DEBUG_OPTIMIZATIONS build/zephyr/.config` shows which one is there.
 
 Bare-metal register blinky (no Zephyr, CMake + Ninja):
 

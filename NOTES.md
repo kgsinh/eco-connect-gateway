@@ -14,6 +14,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - `boards/nucleo_h723zg.overlay` disables `timers12`, `pwm12` and `/pwmleds`, so the Zephyr PWM driver doesn't claim PB14.
 - Clock (upstream board DTS): HSE 8 MHz (ST-Link MCO, bypass) → PLL1 550 MHz CPU, HCLK 275 MHz, APB 137.5 MHz. Console: USART3 (ST-Link VCOM).
 - LED-only build was 21,168 B flash / 4,608 B RAM and was tested on the board (2026-10-27).
+- **External LED on D7/PG12** (`src/led/ext/led_ext.c`): overlay node `ext_led` under a `gpio-leds` group, alias `led-ext`; `led_ext_start()` configures the pin and starts `K_TIMER_DEFINE(led_ext_timer)` at 500 ms, the expiry callback (ISR context) only toggles the pin → 1 Hz, independent of the chase. A start failure is ignored in main() (not core). Written by the user step by step on 2026-11-03. Release build now 168,748 B flash, 41,024 B RAM.
 - **BME280** (`src/sensor/app_sensor.c`): Zephyr `bosch,bme280` driver on I2C1 at 0x76, own thread (prio 7, 1 KB static stack), logs `T .. C  P .. kPa  H .. %RH` every 2 s without float printf (milli split). `app_sensor_start()` returns -ENODEV and logs if the sensor doesn't probe; the rest keeps running. I2C and sensor shells enabled for bring-up (`i2c scan i2c@40005400`, `sensor get bme280@76`). Release build 169,752 B flash, 42,112 B RAM.
 - **Ethernet + IPv4** (`src/net/app_net.c`): ENC28J60 on SPI1 (Zephyr `microchip,enc28j60` driver, node `enc28j60: ethernet@0` in the overlay): CS PD14/D10, INT PD15/D9 active low, SPI max 10 MHz → 8.6 MHz actual (PLL1_Q 137.5 MHz / 16; errata wants ≥ 8 MHz), MAC `00:04:A3:50:00:02` (driver forces Microchip's OUI on the first 3 bytes). 10BASE-T half duplex, no autonegotiation. On-board MAC, MDIO and `eth_phy` are disabled in the overlay. `app_net_start()` is unchanged: static `192.168.50.2/24` + non-blocking DHCPv4, logs the lease. Net shell on the console. Release build 164,668 B flash, 40 KB RAM.
 
@@ -29,6 +30,9 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **Disabling a bus node doesn't disable its children.** With `&mdio` disabled, `eth_phy` (ethernet-phy@0) stayed okay and phy_mii.c failed to build (`__device_dts_ord_N undeclared`). Disable the child too.
 - **SRAM2 is free since the ENC28J60 switch.** The on-board MAC used it for DMA buffers via an MPU non-cacheable region in zephyr/soc/st/stm32/stm32h7x/mpu_regions.c; that region and the linker section only exist while `&mac` is enabled. The ENC28J60 has no DMA in our build (SPI without `dmas`), so nothing needs cache maintenance.
 - **docs/um3252-stm32h7-series.pdf is the X-CUBE-CLASSB self-test library guide, not the board manual.** It was mislabelled in CLAUDE.md/README until 2026-10-27. The Nucleo-144 board manual is UM2407 (not downloaded yet).
+- **`.clang-format` = Zephyr's.** Without it, VS Code's C/C++ extension formats in its "Visual Studio" fallback style (4 spaces, Allman braces). Its clang-format is bundled at `~/.vscode/extensions/ms-vscode.cpptools-*/LLVM/bin/clang-format.exe` (v23). A dry run on existing files changes a few alignment lines (app_sensor.c 24, baremetal main.c 50): not applied yet.
+- **The user's terminal is fish (MSYS2).** zephyr_env.sh is bash: run `bash` first or use the VS Code tasks. A zephyr_env.fish attempt was dropped (the user removed it). Gotchas found: MSYS2 fish started from Git Bash has no USERPROFILE (west fails), fish started from Windows has no coreutils, fish redirections need /c/... paths.
+- **VS Code "Serial monitor" task may not take keyboard input.** Workaround: run `python -m serial.tools.miniterm --filter direct COM5 115200` in a normal terminal. `CONFIG_GPIO_SHELL=y` is on: `gpio conf gpio@58021800 12 o`, `gpio set|get gpio@58021800 12 ...`.
 - **Console:** ST-Link VCOM is **COM5** on this PC, 115200 8N1. Use `python -m serial.tools.miniterm --filter direct COM5 115200` (without `--filter direct`, miniterm shows the ANSI colour codes as `␛[..m`) or PuTTY `-serial COM5 -sercfg 115200,8,n,1,N`. The shell prompt is `uart:~$`.
 - **PC side of the direct cable is a USB adapter, "Ethernet 3" (ASIX USB to Gigabit).** It had no static address on 2026-11-02 (only APIPA 169.254.x), so `ping 192.168.50.2` failed until a matching address existed. Set it to 192.168.50.1/24 (admin: `New-NetIPAddress -InterfaceAlias 'Ethernet 3' -IPAddress 192.168.50.1 -PrefixLength 24`), or for a quick test add one on the board: `net ipv4 add 1 169.254.50.2 255.255.0.0` (lost on reset).
 - **Windows Firewall blocks inbound ping by default**, so `net ping 192.168.50.1` from the board may time out. Test PC → board.
@@ -71,6 +75,9 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 
 ## Open items
 
+- Bulk-format existing sources with `.clang-format` in a separate commit (small alignment changes only).
+- Make the VS Code "Serial monitor" task accept input (e.g. `type: process`), or drop it in favour of a terminal command.
+
 - Optional later: `ETH_PHY_DRIVER`/`MDIO` are still `y` by default with no node; harmless, could be turned off to trim the build.
 - P1 parts not started: BME280 (I2C), IWDG, HTTP server, ram/rom reports in docs/evidence/ram-rom/, written DMA/cache choice.
 
@@ -82,6 +89,9 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 - Re-establish the no-malloc rule for Zephyr (the old link-time trick was CubeIDE-specific). Options: `CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=0`, no `CONFIG_HEAP_MEM_POOL_SIZE`, and a check that `malloc`/`k_malloc` aren't linked.
 
 ## Session log
+
+### 2026-11-03 (external LED, user-written)
+- Guided step by step, user wrote the code: LED + 330 Ω on D7/PG12 tested first from the shell (`CONFIG_GPIO_SHELL`), then overlay node + alias `led-ext`, src/led/ext/led_ext.c/.h with a `k_timer`, CMake + main() call. Tested on the board: 1 Hz blink alongside the chase. Added Zephyr's `.clang-format` after VS Code reformatted the new file in Visual Studio style.
 
 ### 2026-11-02 (history rewrite: no AI co-author)
 - User decision: removed the `Co-Authored-By: Claude` trailer from all 35 commits (`git filter-branch --msg-filter`). Authors, dates, subjects and the final tree are unchanged; **all commit IDs changed** (old HEAD 5872f28, rewritten 58682e5). After the force-push, any other clone must re-clone or `git reset --hard origin/main`. CLAUDE.md now has a Git section: no AI attribution in commits or PRs. Pre-rewrite backup bundle was saved in the session scratchpad.

@@ -29,6 +29,7 @@ Rules for mixing:
 - MISRA C:2025 mandatory + required rules apply to our code (src/) regardless of layer used.
 - No dynamic memory allocation (malloc/free, k_malloc).
 - Zephyr code style: tabs, braces on every block.
+- Formatting: `.clang-format` at the repo root is Zephyr's own (copied from zephyr/.clang-format). New and changed C files are formatted with it (VS Code: Shift+Alt+F uses it automatically). Existing files are not bulk-reformatted yet; do that as its own commit.
 - Comments: Doxygen style, written the way an experienced firmware engineer would. Applies to all our code (src/, baremetal/).
   - Every .c/.h starts with `/** @file` + `@brief` (one line), then a short paragraph only if the file needs context (ownership, clock, constraints).
   - Public functions are documented once, in the header: `@brief`, `@param`, `@return` (`@retval` for specific error codes), `@note` / `@pre` only when they carry real information. Static functions get a `/** @brief ... */` in the .c. Don't repeat the header doc in the .c.

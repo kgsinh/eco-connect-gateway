@@ -31,7 +31,7 @@ Running log of decisions, gotchas and open items. Newest session at the top of t
 - **docs/um3252-stm32h7-series.pdf is the X-CUBE-CLASSB self-test library guide, not the board manual.** It was mislabelled in CLAUDE.md/README until 2026-10-27. The Nucleo-144 board manual is UM2407 (not downloaded yet).
 - **The user's terminal is fish (MSYS2).** zephyr_env.sh is bash: run `bash` first or use the VS Code tasks. A zephyr_env.fish attempt was dropped (the user removed it). Gotchas found: MSYS2 fish started from Git Bash has no USERPROFILE (west fails), fish started from Windows has no coreutils, fish redirections need /c/... paths.
 - **VS Code "Serial monitor" task may not take keyboard input.** Workaround: run `python -m serial.tools.miniterm --filter direct COM5 115200` in a normal terminal. `CONFIG_GPIO_SHELL=y` is on for pin bring-up: `gpio conf gpio@58021800 12 o`, `gpio set|get gpio@58021800 12 ...` (port name = devicetree node name).
-- **No `.clang-format` in the repo.** VS Code's C/C++ extension then formats in its "Visual Studio" fallback (4 spaces, Allman braces), against the Zephyr style rule. Zephyr's own file (`zephyr/.clang-format`) gives the right style; it was added and then reverted with the external LED on 2026-11-03.
+- **`.clang-format` = Zephyr's** (copied from `zephyr/.clang-format`). Without it, VS Code's C/C++ extension formats in its "Visual Studio" fallback (4 spaces, Allman braces), against the Zephyr style rule. Its clang-format is bundled at `~/.vscode/extensions/ms-vscode.cpptools-*/LLVM/bin/clang-format.exe` (v23). A dry run on existing files changes a few alignment lines (app_sensor.c 24, baremetal main.c 50): not applied yet.
 - **Console:** ST-Link VCOM is **COM5** on this PC, 115200 8N1. Use `python -m serial.tools.miniterm --filter direct COM5 115200` (without `--filter direct`, miniterm shows the ANSI colour codes as `␛[..m`) or PuTTY `-serial COM5 -sercfg 115200,8,n,1,N`. The shell prompt is `uart:~$`.
 - **PC side of the direct cable is a USB adapter, "Ethernet 3" (ASIX USB to Gigabit).** It had no static address on 2026-11-02 (only APIPA 169.254.x), so `ping 192.168.50.2` failed until a matching address existed. Set it to 192.168.50.1/24 (admin: `New-NetIPAddress -InterfaceAlias 'Ethernet 3' -IPAddress 192.168.50.1 -PrefixLength 24`), or for a quick test add one on the board: `net ipv4 add 1 169.254.50.2 255.255.0.0` (lost on reset).
 - **Windows Firewall blocks inbound ping by default**, so `net ping 192.168.50.1` from the board may time out. Test PC → board.
@@ -75,7 +75,7 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 ## Open items
 
 - Make the VS Code "Serial monitor" task accept input (e.g. `type: process`), or drop it in favour of a terminal command.
-- Decide whether to add Zephyr's `.clang-format` back (see Things to know).
+- Bulk-format existing sources with `.clang-format` in a separate commit (small alignment changes only).
 
 - Optional later: `ETH_PHY_DRIVER`/`MDIO` are still `y` by default with no node; harmless, could be turned off to trim the build.
 - P1 parts not started: BME280 (I2C), IWDG, HTTP server, ram/rom reports in docs/evidence/ram-rom/, written DMA/cache choice.
@@ -90,7 +90,7 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 ## Session log
 
 ### 2026-11-03 (external LED added, then removed)
-- User wrote an external LED on D7/PG12 step by step (shell test with `CONFIG_GPIO_SHELL`, overlay node + alias `led-ext`, src/led/ext with a `k_timer`), tested at 1 Hz, committed 0f7daf0. Then removed it: LD1 already shows the Zephyr GPIO API, so it added nothing to the gateway. Reverted the commit (no history rewrite); kept `CONFIG_GPIO_SHELL=y`. D7/PG12 is free again. `.clang-format` went with the revert.
+- User wrote an external LED on D7/PG12 step by step (shell test with `CONFIG_GPIO_SHELL`, overlay node + alias `led-ext`, src/led/ext with a `k_timer`), tested at 1 Hz, committed 0f7daf0. Then removed it: LD1 already shows the Zephyr GPIO API, so it added nothing to the gateway. Reverted the commit (no history rewrite); kept `CONFIG_GPIO_SHELL=y`. D7/PG12 is free again. `.clang-format` went with the revert and was added back on its own right after.
 
 ### 2026-11-02 (history rewrite: no AI co-author)
 - User decision: removed the `Co-Authored-By: Claude` trailer from all 35 commits (`git filter-branch --msg-filter`). Authors, dates, subjects and the final tree are unchanged; **all commit IDs changed** (old HEAD 5872f28, rewritten 58682e5). After the force-push, any other clone must re-clone or `git reset --hard origin/main`. CLAUDE.md now has a Git section: no AI attribution in commits or PRs. Pre-rewrite backup bundle was saved in the session scratchpad.

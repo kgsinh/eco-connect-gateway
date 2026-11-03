@@ -89,6 +89,9 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 
 ## Session log
 
+### 2026-11-03 (history rewrite: no-reply email)
+- User decision before making the repo public: author and committer email on all commits changed from the personal address to `47400404+kgsinh@users.noreply.github.com` (`git filter-branch --env-filter`), force-pushed. Names, dates, messages and trees unchanged; **all commit IDs changed again**, so IDs quoted in older entries refer to the earlier history. This repo's `.git/config` now sets the no-reply address (the global ~/.gitconfig still has the personal one). Local username in docs replaced with `%USERPROFILE%` / `%USERNAME%`.
+
 ### 2026-11-03 (animation audit, errata check)
 - Audited the animation against code, build and datasheets: fixed the boot explanation (the 12-79 ms gap is the BME280 driver waiting for the first conversion, 70 ms typ / 80.6 ms max from datasheet 9.1 at T×2/P×16/H×16) and six smaller inaccuracies. User added the ENC28J60 errata (docs/80349c.pdf): the 8 MHz SPI minimum applies only to B1/B4 silicon; corrected the overlay comment, pins note and NOTES, which had stated it as a general rule.
 

@@ -65,7 +65,7 @@ Set by Zephyr from the upstream board devicetree (`boards/st/nucleo_h723zg` in t
 
 ## Architecture
 
-Diagrams of how the parts connect, the boot and runtime sequence, and the build: [docs/architecture.md](docs/architecture.md).
+Diagrams of how the parts connect, the boot and runtime sequence, and the build: [docs/architecture.md](docs/architecture.md). Every API used in `src/`, with its purpose: [docs/api-reference.md](docs/api-reference.md).
 
 ## Project layout
 

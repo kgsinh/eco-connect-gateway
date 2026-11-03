@@ -89,6 +89,9 @@ From docs/Presentation - Embedded Design Cohort - Batch 01.pdf. The bar is "runs
 
 ## Session log
 
+### 2026-11-03 (API reference)
+- Added docs/api-reference.md: every API in src/ by layer, verified against Zephyr 4.4.0 headers/sources, the HAL and .config. Finding: under Zephyr `uint32_t` is `unsigned int` (zephyr_stdint.h via -imacros), not the toolchain's `unsigned long`; `PRIu32` is right either way. app_net.c reads internal `struct net_if` fields (unicast[], dhcpv4.lease_time): recheck on a Zephyr upgrade.
+
 ### 2026-11-03 (history rewrite: no-reply email)
 - User decision before making the repo public: author and committer email on all commits changed from the personal address to `47400404+kgsinh@users.noreply.github.com` (`git filter-branch --env-filter`), force-pushed. Names, dates, messages and trees unchanged; **all commit IDs changed again**, so IDs quoted in older entries refer to the earlier history. This repo's `.git/config` now sets the no-reply address (the global ~/.gitconfig still has the personal one). Local username in docs replaced with `%USERPROFILE%` / `%USERNAME%`.
 

@@ -3,7 +3,17 @@
 cmake_minimum_required(VERSION 3.20)
 project(baremetal_blinky C)
 
-add_executable(blinky.elf main.c startup.c)
+add_executable(blinky.elf
+	main.c
+	startup.c
+	board/led.c
+	drivers/gpio.c
+	drivers/rcc.c
+	drivers/systick.c
+)
+
+# Include root: #include "drivers/gpio.h", "board/led.h"
+target_include_directories(blinky.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(CPU_FLAGS -mcpu=cortex-m7 -mthumb -mfloat-abi=soft)
 

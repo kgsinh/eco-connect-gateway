@@ -19,7 +19,7 @@
 
 /*
  * Ethernet: ENC28J60 module on SPI1 (Arduino header) replaces the on-board
- * RMII MAC + LAN8742A, so the driver matches the F4 boards in the cohort.
+ * RMII MAC + LAN8742A, so the driver matches with other boards.
  * Disabling &mac also drops Zephyr's non-cacheable SRAM2 region for the
  * on-board MAC (soc/st/stm32/stm32h7x/mpu_regions.c).
  */

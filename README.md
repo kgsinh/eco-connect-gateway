@@ -23,10 +23,10 @@ LED chase: one LED on at a time, LD1 → LD2 → LD3, 250 ms per step. (The bare
 | LD2 yellow | PE1 | STM32Cube HAL GPIO, `src/led/hal/led_hal.c` | 2nd |
 | LD3 red | PB14 | CMSIS registers, `src/led/cmsis/led_cmsis.c` | 3rd |
 
-**Ethernet** (`src/net/app_net.c`): ENC28J60 module on SPI1 (10BASE-T) via Zephyr's `microchip,enc28j60` driver; the on-board RMII Ethernet is disabled in the overlay. The board answers ping on two IPv4 addresses:
+**Ethernet** (`src/net/app_net.c`): ENC28J60 module on SPI1 (10BASE-T) via Zephyr's `microchip,enc28j60` driver; the on-board RMII Ethernet is disabled in the overlay. The board has one IPv4 address, and `prj.conf` picks how it gets it (Kconfig choice `APP_NET_MODE`):
 
-- **Static `192.168.50.2/24`**, for a cable straight to a PC. Set the PC's Ethernet adapter to `192.168.50.1` / `255.255.255.0`, no gateway, then `ping 192.168.50.2`. Change or disable it with `CONFIG_APP_NET_STATIC_IPV4_ADDR` in `prj.conf` (empty = off).
-- **DHCP**, for a router. The leased address is printed on the console.
+- **Static `192.168.50.2/24`** (`CONFIG_APP_NET_STATIC=y`, the default), for a cable straight to a PC. Set the PC's Ethernet adapter to `192.168.50.1` / `255.255.255.0`, no gateway, then `ping 192.168.50.2`. Change the address with `CONFIG_APP_NET_STATIC_IPV4_ADDR` / `_NETMASK`.
+- **DHCP** (`CONFIG_APP_NET_DHCP=y`; comment out the static line in `prj.conf`), for a router. The leased address is printed on the console.
 
 Tested: 10 Mb half-duplex link (the ENC28J60 has no autonegotiation; the PC adapter detects 10 Mb), ping from the PC over a direct cable.
 
@@ -71,7 +71,7 @@ Diagrams of how the parts connect, the boot and runtime sequence, and the build:
 
 ```
 CMakeLists.txt      Zephyr app build file
-Kconfig             App Kconfig: selects STM32Cube HAL/LL modules; static IP settings
+Kconfig             App Kconfig: selects STM32Cube HAL/LL modules; network mode, static IP
 prj.conf            App Kconfig settings
 debug.conf          Extra settings for a debug build (-Og, asserts, thread info)
 boards/
@@ -79,7 +79,7 @@ boards/
 src/
   main.c                LD1 via Zephyr, LED chase, starts network and sensor
   net/
-    app_net.c/.h        Ethernet bring-up, static IP + DHCPv4, logs the lease
+    app_net.c/.h        Ethernet bring-up: static IP or DHCPv4, logs the lease
   sensor/
     app_sensor.c/.h     BME280 thread: temperature, pressure, humidity every 2 s
   led/

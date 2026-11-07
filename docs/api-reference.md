@@ -62,11 +62,13 @@ Hardware is described once in the devicetree (see [architecture.md](architecture
 | `net_addr_ntop(NET_AF_INET, &addr, buf, len)` | Binary to text | Logging the DHCP lease |
 | `net_if_ipv4_addr_add(iface, &addr, NET_ADDR_MANUAL, 0)` | Adds the static address; lifetime 0 = never expires | Reachable on a direct PC cable without a DHCP server |
 | `net_if_ipv4_set_netmask_by_addr(iface, &addr, &mask)` | Netmask (/24) for that address | Current per-address API; the per-interface variant is deprecated |
+| `net_if_ipv4_addr_rm(iface, &addr)` | Removes an address | Undoes the static address if its netmask can't be set |
+| `IS_ENABLED(CONFIG_APP_NET_STATIC)` / `(CONFIG_APP_NET_DHCP)` | 1 or 0 from Kconfig, usable in a normal `if` | Selects the IPv4 mode; both branches are still compiled and type-checked, the unused one is optimised away |
 | `net_mgmt_init_event_callback(&cb, handler, NET_EVENT_IPV4_ADDR_ADD)` + `net_mgmt_add_event_callback(&cb)` | Calls `handler` when an IPv4 address is added | DHCP finishes at an unknown time; an event avoids waiting. `cb` is `static` because net_mgmt keeps it in a linked list |
-| `net_dhcpv4_start(iface)` | Starts DHCP negotiation in the background and returns | Router support without blocking `main()` |
-| `NET_IF_MAX_IPV4_ADDR` | Address slots per interface (`CONFIG_NET_IF_UNICAST_IPV4_ADDR_COUNT` = 2) | Static IP + DHCP both fit |
+| `net_dhcpv4_start(iface)` | Starts DHCP negotiation in the background and returns | DHCP mode: router support without blocking `main()` |
+| `NET_IF_MAX_IPV4_ADDR` | Address slots per interface (`CONFIG_NET_IF_UNICAST_IPV4_ADDR_COUNT` = 1) | One address: static or DHCP, never both |
 | `NET_IPV4_ADDR_LEN` | Buffer size for "xxx.xxx.xxx.xxx" | Correct size for `net_addr_ntop()` |
-| `NET_ADDR_DHCP`, `NET_ADDR_MANUAL` | Address type | Log only the DHCP address; mark the static one as manual |
+| `NET_ADDR_DHCP`, `NET_ADDR_MANUAL` | Address type | The handler logs only the DHCP address; the static one is added as manual |
 
 Note: the event handler reads `iface->config.ip.ipv4->unicast[i]` and `iface->config.dhcpv4.lease_time` directly. These are Zephyr's internal structures, not a stable API, and may change in a later Zephyr version. Check them when upgrading from 4.4.0.
 

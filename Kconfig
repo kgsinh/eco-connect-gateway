@@ -7,15 +7,29 @@ config APP_STM32_HAL_GPIO
 	default y
 	select USE_STM32_HAL_GPIO
 
-# Static IPv4 address, added alongside DHCP so the board is reachable when
-# cabled straight to a PC (no DHCP server). Empty string disables it.
+# IPv4 mode: one address per interface, set in prj.conf
+
+choice APP_NET_MODE
+	prompt "Network IPv4 mode"
+	default APP_NET_STATIC
+
+config APP_NET_STATIC
+	bool "Static IPv4 (direct PC connection)"
+
+config APP_NET_DHCP
+	bool "DHCPv4 (router connection)"
+
+endchoice
+
+# Defined in both modes (no "depends on"): app_net.c compiles add_static_ipv4()
+# in both and only calls it in static mode.
 
 config APP_NET_STATIC_IPV4_ADDR
-	string "Static IPv4 address (empty = DHCP only)"
+	string "Static IPv4 address"
 	default "192.168.50.2"
 
 config APP_NET_STATIC_IPV4_NETMASK
-	string "Netmask for the static IPv4 address"
+	string "Static IPv4 netmask"
 	default "255.255.255.0"
 
 source "Kconfig.zephyr"

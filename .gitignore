@@ -28,3 +28,11 @@ docs/misra-*-rule-texts.txt
 
 # VS Code multi-root workspace: paths depend on this PC's west workspace layout
 *.code-workspace
+
+# Claude Code local settings
+.claude/
+
+# Packet captures hold MAC addresses, hostnames and LAN traffic; local only
+*.pcap
+*.pcapng
+docs/network-packets/

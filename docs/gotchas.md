@@ -36,10 +36,12 @@ Things that cost time on this project and are not obvious from the code. Network
 
 ## Console and shell
 
+- The VS Code **Serial Monitor** extension sends text with no line ending by default ("Line ending: None"): the shell echoes the command but never runs it, and the next message is appended to the same line. Set the line ending to CR or CRLF, or use miniterm.
 - Use `python -m serial.tools.miniterm --filter direct <port> 115200`; without `--filter direct`, miniterm shows the shell's ANSI colour codes as `␛[..m`. Only one program can hold the port.
 - Zephyr's `net`, `kernel`, `i2c`, `sensor` and `gpio` commands run in the **board's** shell (`uart:~$`), not on the PC. In a Windows terminal, `net iface` runs Windows' own `net.exe`.
 - GPIO shell port names are devicetree node names: `gpio conf gpio@58021800 12 o`.
 - `CONFIG_REBOOT` is off, so `kernel reboot cold` isn't available.
+- BME280 readings are logged at debug level and hidden at boot by `CONFIG_SHELL_BACKEND_SERIAL_LOG_LEVEL_INF`. `LOG_RUNTIME_DEFAULT_LEVEL` alone doesn't hide them: when the shell backend starts, it sets every module to its own level, and its default ("system limit") is each module's compiled level. `log enable dbg app_sensor` shows them, `log enable inf app_sensor` hides them; `log status` lists every module's level. Not persistent across resets.
 
 ## Parts
 

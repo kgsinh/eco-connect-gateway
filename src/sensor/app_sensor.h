@@ -8,6 +8,9 @@
 /**
  * @brief Check the BME280 and start the thread that logs a reading every 2 s.
  *
+ * Readings are logged at debug level, hidden at boot; show them with
+ * `log enable dbg app_sensor`, hide them with `log enable inf app_sensor`.
+ *
  * A failed read is logged and retried on the next period. A BMP280 (chip ID
  * 0x58, no humidity sensor) probes successfully but every read reports
  * -ENOTSUP for humidity.

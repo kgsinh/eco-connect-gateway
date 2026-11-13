@@ -16,7 +16,10 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(app_sensor, LOG_LEVEL_INF);
+/* Readings are compiled in at DBG but hidden at boot: the shell log backend
+ * starts every module at INF (prj.conf). `log enable dbg app_sensor` shows them.
+ */
+LOG_MODULE_REGISTER(app_sensor, LOG_LEVEL_DBG);
 
 #define SENSOR_PERIOD_MS    2000
 #define SENSOR_STACK_SIZE   1024
@@ -83,7 +86,7 @@ static int read_sample(struct sensor_value *temp, struct sensor_value *press,
 }
 
 /**
- * @brief Thread body: log one reading every SENSOR_PERIOD_MS.
+ * @brief Thread body: log one reading (debug level) every SENSOR_PERIOD_MS.
  * @param p1 Unused.
  * @param p2 Unused.
  * @param p3 Unused.
@@ -106,7 +109,7 @@ static void sensor_thread_fn(void *p1, void *p2, void *p3)
 			const struct milli_parts p = to_parts(&press);
 			const struct milli_parts h = to_parts(&hum);
 
-			LOG_INF("T %s%" PRIu32 ".%02" PRIu32 " C  P %s%" PRIu32 ".%03" PRIu32
+			LOG_DBG("T %s%" PRIu32 ".%02" PRIu32 " C  P %s%" PRIu32 ".%03" PRIu32
 				" kPa  H %s%" PRIu32 ".%01" PRIu32 " %%RH",
 				t.sign, t.whole, t.frac / 10U,
 				p.sign, p.whole, p.frac,

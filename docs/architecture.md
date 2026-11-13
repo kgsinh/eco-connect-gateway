@@ -24,7 +24,7 @@ flowchart LR
     subgraph MCU["STM32H723 peripherals"]
         GPIO["GPIOB / GPIOE"]
         I2C1["I2C1<br/>400 kHz"]
-        SPI1["SPI1 8.6 MHz<br/>INT PD15"]
+        SPI1["SPI1 17.2 MHz<br/>INT PD15"]
         USART3["USART3<br/>115200"]
     end
     subgraph OFF["Off-board"]

@@ -43,12 +43,14 @@
 		compatible = "microchip,enc28j60";
 		reg = <0>;   /* cs-gpios[0] from the board DTS: PD14 / D10 */
 		/*
-		 * SPI1 kernel clock is PLL1_Q = 137.5 MHz with power-of-2 prescalers:
-		 * a 10 MHz limit selects /16 = 8.6 MHz. That is conservative for jumper
-		 * wires and still meets the 8 MHz minimum that ENC28J60 errata DS80349C
-		 * issue 1 sets for old silicon (B1, B4; current B7 is not affected).
+		 * SPI1 kernel clock is PLL1_Q = 137.5 MHz with power-of-2 prescalers;
+		 * spi_stm32.c takes the first divider at or below this limit, so 20 MHz
+		 * (ENC28J60 maximum, DS39662C) selects /8 = 17.2 MHz. Reading a full
+		 * 1518-byte frame then takes ~0.72 ms, inside the ~1.26 ms worst-case
+		 * window of the driver's 3 KB RX FIFO; /16 = 8.6 MHz took ~1.43 ms.
+		 * Both meet the 8 MHz minimum of errata DS80349C issue 1 (B1/B4 only).
 		 */
-		spi-max-frequency = <DT_FREQ_M(10)>;
+		spi-max-frequency = <DT_FREQ_M(20)>;
 		/* INT is active low (DS39662C 12.0) */
 		int-gpios = <&gpiod 15 GPIO_ACTIVE_LOW>;   /* PD15 / D9 */
 		/* The driver replaces the first three bytes with Microchip's OUI */

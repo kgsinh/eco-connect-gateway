@@ -19,6 +19,7 @@
 #include "led/hal/led_hal.h"
 #include "led/cmsis/led_cmsis.h"
 #include "net/app_net.h"
+#include "net/tcp/app_tcp.h"
 #include "sensor/app_sensor.h"
 
 #define TICK_MS    250
@@ -76,6 +77,9 @@ int main(void)
 
 	/* Returns before the DHCP lease, so the LEDs keep running meanwhile */
 	(void)app_net_start();
+
+	/* The server thread waits for the interface; main() continues at once */
+	(void)app_tcp_start();
 
 	/* A missing sensor is logged; the LEDs and network keep running */
 	(void)app_sensor_start();

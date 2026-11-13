@@ -3,6 +3,8 @@
 ## Project notes
 Read NOTES.md at the start of every session: it holds the current architecture, gotchas and open items. Keep it up to date as you work. When something worth remembering comes up (a "things to know" item, a decision, a deviation, an open item, what was tested on hardware), add it there in the same session. Add a dated entry to its session log and update the sections above it so they always describe the current state. Keep it terse.
 
+NOTES.md is the private working log: gitignored, local only, never commit it. The public repo gets the parts worth showing, kept current in the same session: technical gotchas in docs/gotchas.md, networking decisions and test results in docs/networking.md, deliverable status in README.md. Public docs describe the project, not the sessions: no session log, no PC-specific paths or names, no personal details.
+
 ## Hardware
 - Board: NUCLEO-H723ZG (STM32H723ZG, Cortex-M7)
 - User LEDs: LD1 green PB0, LD2 yellow PE1, LD3 red PB14. User button PC13. Console: USART3 (ST-Link VCOM).
@@ -46,7 +48,7 @@ West workspace: D:\Workspace (Zephyr 4.4.0); west finds it automatically from th
 
 Versions are pinned in `west.yml` (Zephyr v4.4.0, modules cmsis_6, hal_stm32, picolibc, hal_st, littlefs via `name-allowlist`). D:\Workspace still uses its own manifest (zephyr/west.yml) at the same commits; west.yml only applies to a workspace made with `west init -l`. A new module (e.g. a sensor HAL) goes in the allowlist. Upgrading Zephyr = change `revision`, `west update`, rebuild, retest, update this file.
 
-`tools/zephyr_env.sh` picks the toolchain: `GNUARMEMB_TOOLCHAIN_PATH` if set, else a readable Zephyr SDK from `ZEPHYR_SDK_INSTALL_DIR`, else CubeIDE's Arm GCC (gnuarmemb); it also sets `$STM32_PROGRAMMER_CLI`. On this PC the SDK (%USERPROFILE%\zephyr-sdk-1.0.1) is unreadable (see NOTES.md) although the user env sets `ZEPHYR_TOOLCHAIN_VARIANT=zephyr` and `ZEPHYR_SDK_INSTALL_DIR`, so the script unsets the SDK path and uses CubeIDE's GCC 14.3.1. Once the SDK permissions are fixed, the script switches to the SDK by itself. Bare-metal blinky: `baremetal/blinky/build.sh [flash]` (sources the script itself):
+`tools/zephyr_env.sh` picks the toolchain: `GNUARMEMB_TOOLCHAIN_PATH` if set, else a readable Zephyr SDK from `ZEPHYR_SDK_INSTALL_DIR`, else CubeIDE's Arm GCC (gnuarmemb); it also sets `$STM32_PROGRAMMER_CLI`. On this PC the SDK (%USERPROFILE%\zephyr-sdk-1.0.1) is unreadable (see docs/gotchas.md) although the user env sets `ZEPHYR_TOOLCHAIN_VARIANT=zephyr` and `ZEPHYR_SDK_INSTALL_DIR`, so the script unsets the SDK path and uses CubeIDE's GCC 14.3.1. Once the SDK permissions are fixed, the script switches to the SDK by itself. Bare-metal blinky: `baremetal/blinky/build.sh [flash]` (sources the script itself):
 
     source tools/zephyr_env.sh
     west build -p always -b nucleo_h723zg                                   # release (-Os)
@@ -102,5 +104,6 @@ Located in /docs (gitignored, local only — see README for download names):
 - Board-Suitability-P1-P2.pdf, ESC-Embedded-Software-Design-Mentor.pdf (7-stage method), Presentation - Embedded Design Cohort - Batch 01.pdf (week-one deliverables) — mentor's cohort material; the requirements this project is built against.
 - Arm-Cortex-M7-Processor-Datasheet.pdf — Arm's Cortex-M7 processor overview.
 - enc28j60.pdf — ENC28J60 data sheet (DS39662C). 80349c.pdf — ENC28J60 silicon errata (DS80349C). bst-bme280-ds002.pdf — BME280 data sheet (rev 1.24).
+- Mentor's TCP/IP guides (Zephyr 4.4.0, same commit as ours, written for stm32f4_disco, not run on hardware): 01-Use-Cases-and-Sequence-Diagrams-for-Embedded-Systems.pdf (UC-1 template, ISR/thread sequence rules, ENC28J60 RX timing budget, TCP failure errnos), 02-Kickstart-TCP-IP-on-Zephyr.pdf (prj.conf, TCP echo server/client, bottom-up test steps, source reading order), 03-ENC28J60-Zephyr-Infrastructure.pdf (binding, Kconfig, driver walkthrough, driver-vs-errata gaps), enc28j60-buffer-notes.pdf (8 KB buffer, pointers, RX ring, TX, errata traps).
 - MISRA-C-2025.pdf — MISRA C:2025 (licensed to the user personally; local only). Use for rule rationale and compliant examples.
 Read the relevant document before writing new CMSIS-level code for anything not touched yet this session — don't rely on memory for register addresses or bit definitions. For Zephyr APIs, read the headers/docs in D:\Workspace\zephyr.

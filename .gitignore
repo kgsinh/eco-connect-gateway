@@ -36,3 +36,6 @@ docs/misra-*-rule-texts.txt
 *.pcap
 *.pcapng
 docs/network-packets/
+
+# Private working log (session notes); public parts live in docs/gotchas.md and docs/networking.md
+NOTES.md

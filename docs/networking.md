@@ -1,0 +1,77 @@
+# Networking: ENC28J60 + Zephyr TCP/IP
+
+How the gateway's Ethernet and TCP/IP stack is set up, why, and what has been tested on the board. Pin and clock values are in [pins-and-clocks.md](pins-and-clocks.md); the code layers are in [architecture.md](architecture.md).
+
+## Goal (week of 2026-11-13)
+
+Bring up the Zephyr TCP/IP stack over the ENC28J60. Done when the board gets an IP address, answers ping, and serves a static web page.
+
+| Criterion | Status |
+|---|---|
+| IP address | Static 192.168.50.2/24: tested. DHCPv4: builds, not tested yet (needs a router or a DHCP server). |
+| Ping | Tested, PC → board, 1-2 ms, TTL 64. |
+| TCP | Echo server on port 4242 (`src/net/tcp/app_tcp.c`) builds; not tested yet. |
+| Static web page | Not started. Plan: Zephyr's HTTP server (see below). |
+
+## Stack configuration
+
+| Kconfig | Why |
+|---|---|
+| `NET_IPV4`, `NET_ARP`, `NET_UDP` | IPv4, ARP, and UDP for DHCP. Ping (ICMPv4) is part of `NET_IPV4`; Zephyr 4.4 has no `NET_ICMPV4` symbol. |
+| `NET_TCP`, `NET_SOCKETS` | TCP state machine and the `zsock_*` socket API. Cost: +22.7 KB flash, +6.1 KB RAM. |
+| `NET_CONFIG_SETTINGS=n` | `app_net.c` sets the address itself (static or DHCP, Kconfig choice `APP_NET_MODE`). This also avoids `NET_CONFIG_AUTO_INIT`, which can hold boot for up to 30 s without a cable. |
+| `ENTROPY_GENERATOR` | TCP needs random numbers. The STM32H7 RNG is the source (`ENTROPY_STM32_RNG`); `TEST_RANDOM_GENERATOR` (not secure) is not used. |
+| `NET_IF_UNICAST_IPV4_ADDR_COUNT=1` | One address per interface, static or DHCP. |
+
+Socket file descriptors: `ZVFS_OPEN_MAX=0` does not mean "none". `lib/os/CMakeLists.txt` sizes the table as the sum of the `ZVFS_OPEN_ADD_SIZE_*` requests (networking 6 + socket service 1 = 7).
+
+## ENC28J60 driver
+
+Zephyr's `microchip,enc28j60` driver, node `enc28j60: ethernet@0` on SPI1 in the board overlay.
+
+- **SPI clock 17.2 MHz** (`spi-max-frequency` 20 MHz; SPI1 runs from PLL1_Q = 137.5 MHz with power-of-2 prescalers, and `spi_stm32.c` takes the first one at or below the limit, so /8). Reason: the driver gives the chip a 3 KB receive FIFO. With back-to-back maximum-size frames, frame 1 must be read and freed within about 1.26 ms of its interrupt. Reading 1539 bytes takes 0.72 ms at 17.2 MHz; the earlier 8.6 MHz needed 1.43 ms, over budget. These are calculated, not measured. Works over jumper wires.
+- **MAC address:** the driver replaces the first three bytes with Microchip's OUI 00:04:A3; only the last three from the overlay survive.
+- **Interrupt:** INT (PD15) is active low. The ISR only gives a semaphore; the driver's RX thread does all SPI work and counts pending frames with EPKTCNT (EIR.PKTIF is unreliable per the errata).
+- **No reset pin:** the binding has none; the driver resets the chip with the SPI soft-reset command.
+- **Silicon revision:** not read yet. The driver defines `EREVID` (bank 3, 0x12) but never reads it. Values from errata DS80349C table 1: 0x02 B1, 0x04 B4, 0x05 B5, 0x06 B7.
+
+### Driver vs. errata (Zephyr 4.4.0 `drivers/ethernet/eth_enc28j60.c`)
+
+Found by reading the source against the datasheet and errata. Not reproduced on hardware; questions for the bench, not confirmed bugs. The upstream tree is not edited.
+
+| Topic | Errata / datasheet | Driver |
+|---|---|---|
+| ERXRDPT must be odd (errata 14) | Write `NextPacketPointer - 1` (or ERXND) | Writes even values; workaround commented out (lines 648-655) |
+| Delay after soft reset | ≥ 1 ms; CLKRDY is not cleared by a soft reset | 11 µs, then polls CLKRDY |
+| TX completion (errata 12) | Treat TXIF or TXERIF as done | Polls TXIF only, no timeout, while holding the semaphore that also guards RX (lines 517-522) |
+| Duplex per instance | Each node has its own setting | `DT_INST_PROP(0, full_duplex)` (line 892); harmless with one chip |
+
+## TCP behaviour (Zephyr 4.4.0 defaults)
+
+- Initial retransmission timeout 200 ms, 9 retries: a lost peer is detected 15-23 s after the send.
+- Blocking `connect()` gives up after 3000 ms (`NET_SOCKETS_CONNECT_TIMEOUT`).
+- Keepalive is off by default.
+- `send()` returning success means queued, not delivered; `send()` after the connection left ESTABLISHED returns `ENOTCONN`.
+
+## Application code
+
+- `src/net/app_net.c`: one IPv4 address, static or DHCPv4 (logs the lease from a `net_mgmt` callback).
+- `src/net/tcp/app_tcp.c`: TCP echo server, port 4242, own thread (priority 8, 2 KB static stack). It registers for `NET_EVENT_IF_UP` and then checks `net_if_is_up()`, so an interface that came up before the registration is not missed. One client at a time; the echo loop handles short sends.
+- Socket addresses are filled through Zephyr's `net_sin()` helper on a `struct net_sockaddr`, so our code has no pointer cast (MISRA C Rule 11.3).
+- PC test client: `python tools/echo_test.py [host]` sends five lines and checks each echo.
+
+## Planned: static web page
+
+Zephyr's HTTP server (`CONFIG_HTTP_SERVER`, marked experimental in 4.4): `HTTP_SERVICE_DEFINE` + a static `HTTP_RESOURCE_DEFINE`, started with `http_server_start()`. CMake needs a linker section for the service's resource table and a build step that gzips the HTML into an include file (as in `samples/net/sockets/http_server`). It runs its own thread (3 KB default stack). Fallback if it costs too much RAM: a minimal HTTP/1.0 responder on the existing socket code (`samples/net/sockets/dumb_http_server`).
+
+## Testing on the bench
+
+PC adapter on the direct cable: 192.168.50.1/24. Board shell on the ST-Link serial port (115200 8N1).
+
+1. `net iface` (board): carrier ON, 10 Mbit, address present.
+2. `ping 192.168.50.2` (PC). Windows Firewall blocks inbound ping by default, so test PC → board.
+3. `python tools/echo_test.py` (PC): `ok ping 0` … `ok ping 4`.
+4. `net stats`, `net conn`, `net tcp` (board): counters and open connections.
+5. Wireshark: `ip.addr == 192.168.50.2 and tcp.port == 4242`.
+
+The first ping after boot can report "Destination host unreachable" until the board answers ARP; a retry works.

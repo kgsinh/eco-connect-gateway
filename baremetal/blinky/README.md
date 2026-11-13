@@ -22,7 +22,8 @@ drivers/systick.c/.h  1 ms SysTick interrupt, SysTick_Handler, systick_delay_ms(
 ```
 
 Layers: `main.c` → `board/` → `drivers/`. Drivers know registers but not the board; `board/` knows the wiring; `main.c` knows neither. The include root is this folder (`#include "drivers/gpio.h"`).
-- `CMakeLists.txt`, `arm-none-eabi.cmake`, `build.sh`: command-line build with CMake + Ninja and the Arm GCC toolchain.
+
+Build files: `CMakeLists.txt`, `arm-none-eabi.cmake` (toolchain file) and `build.sh`, a command-line build with CMake + Ninja and the Arm GCC toolchain.
 
 The core runs on the reset clock, HSI at 64 MHz. Each register address and bit is annotated with its RM0468 or PM0253 section.
 
@@ -31,7 +32,7 @@ The core runs on the reset clock, HSI at 64 MHz. Each register address and bit i
 In Git Bash, from any directory (the script loads `tools/zephyr_env.sh` itself):
 
 ```
-baremetal/blinky/build.sh          # -> baremetal/blinky/build/blinky.elf
+baremetal/blinky/build.sh          # -> baremetal/blinky/build/blinky.elf (496 B flash + 4 B RAM)
 baremetal/blinky/build.sh flash    # build, then flash over ST-Link (connect under reset)
 ```
 

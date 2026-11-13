@@ -47,7 +47,7 @@ BME280 wiring (3.3 V breakout): VCC to 3V3, GND to GND, SCL to D15 (PB8), SDA to
 
 **Console:** ST-Link virtual COM port, 115200 8N1. It shows boot logs and the Zephyr shell (`uart:~$`; try `net iface`, `net ping <ip>`, `help`). The shell uses ANSI colour/cursor codes, so use a terminal that understands them: `python -m serial.tools.miniterm --filter direct COMx 115200` or PuTTY. Plain miniterm shows them as `␛[..m`.
 
-See NOTES.md for current state, gotchas and open items, and CLAUDE.md for the rules on mixing layers.
+See [docs/gotchas.md](docs/gotchas.md) for pitfalls found along the way, [docs/networking.md](docs/networking.md) for the Ethernet/TCP/IP setup and its test status, and CLAUDE.md for the rules on mixing layers.
 
 ### Clock configuration
 
@@ -146,19 +146,22 @@ source tools/zephyr_env.sh
 
 ## Build
 
-Zephyr application (the gateway):
+Zephyr application (the gateway), in Git Bash at the repo root after `source tools/zephyr_env.sh`:
 
 ```
-west build -p always -b nucleo_h723zg                                   # release (-Os)
+west build -p always -b nucleo_h723zg                                   # release (-Os), static IP
 west build -p always -b nucleo_h723zg -- -DEXTRA_CONF_FILE=debug.conf  # debug (-Og, asserts)
+west build -p always -b nucleo_h723zg -- -DCONFIG_APP_NET_STATIC=n -DCONFIG_APP_NET_DHCP=y  # DHCP instead of static IP
 ```
 
-Output: `build/zephyr/zephyr.elf`, about 169 KB flash and 40 KB RAM (release, with the GPIO shell). Both variants use `build/`; `grep DEBUG_OPTIMIZATIONS build/zephyr/.config` shows which one is there.
+`Could not find a package configuration file provided by "Zephyr-sdk"` means `zephyr_env.sh` was not sourced in this shell.
+
+Output: `build/zephyr/zephyr.elf`, about 193 KB flash and 49 KB RAM (release, with TCP, sockets and the GPIO shell). Both variants use `build/`; `grep DEBUG_OPTIMIZATIONS build/zephyr/.config` shows which one is there.
 
 Bare-metal register blinky (no Zephyr, CMake + Ninja):
 
 ```
-baremetal/blinky/build.sh            # -> baremetal/blinky/build/blinky.elf, 460 bytes
+baremetal/blinky/build.sh            # -> baremetal/blinky/build/blinky.elf, 496 B flash + 4 B RAM
 ```
 
 ## Flash
@@ -211,7 +214,7 @@ Step-by-step debugging in VS Code with the **Cortex-Debug** extension and ST's S
 
 **Attach (ST-LINK, no reset, no flash)** halts the firmware that's already running, which is useful when it hangs. The ELF in `build/` must match what's on the board.
 
-**STM32CubeIDE** also works as a debugger front end: import `build/zephyr/zephyr.elf` via File → Import → C/C++ → STM32 Cortex-M Executable, and set Reset behaviour to *Connect under reset*. To build in CubeIDE as well, start it with `tools/cubeide.sh` and import the repo as an existing Makefile project with build command `west`; see NOTES.md for the exact settings.
+**STM32CubeIDE** also works as a debugger front end: import `build/zephyr/zephyr.elf` via File → Import → C/C++ → STM32 Cortex-M Executable, and set Reset behaviour to *Connect under reset*. To build in CubeIDE as well, start it with `tools/cubeide.sh` and import the repo as an existing Makefile project with build command `west`; see [docs/gotchas.md](docs/gotchas.md#stm32cubeide-as-front-end) for the exact settings.
 
 Without a debugger: a crash prints Zephyr's fatal-error dump (faulting PC, thread) on the console; resolve the PC with `arm-none-eabi-addr2line -e build/zephyr/zephyr.elf <pc>`. The shell has `kernel threads`, `kernel stacks` and `device list`.
 

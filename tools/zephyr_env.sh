@@ -11,7 +11,7 @@
 #
 # Defaults are this PC's CubeIDE 1.17.0 install; the plugin folder names
 # change when CubeIDE updates. On this PC the Zephyr SDK folder is not
-# readable (see NOTES.md), so step 2 is skipped and step 3 applies.
+# readable (see docs/gotchas.md), so step 2 is skipped and step 3 applies.
 
 CUBEIDE_PLUGINS="${CUBEIDE_PLUGINS:-C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins}"
 cubeide_gcc="$CUBEIDE_PLUGINS/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools"

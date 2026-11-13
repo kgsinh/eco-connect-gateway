@@ -10,7 +10,7 @@ Bring up the Zephyr TCP/IP stack over the ENC28J60. Done when the board gets an 
 |---|---|
 | IP address | Static 192.168.50.2/24: tested. DHCPv4: builds, not tested yet (needs a router or a DHCP server). |
 | Ping | Tested, PC → board, 1-2 ms, TTL 64. |
-| TCP | Echo server on port 4242 (`src/net/tcp/app_tcp.c`) builds; not tested yet. |
+| TCP | Echo server on port 4242 (`src/net/tcp/app_tcp.c`): tested, `tools/echo_test.py` 5/5 lines echoed, twice in a row (the accept loop serves a new client after the previous one closes). |
 | Static web page | Not started. Plan: Zephyr's HTTP server (see below). |
 
 ## Stack configuration
@@ -33,7 +33,7 @@ Zephyr's `microchip,enc28j60` driver, node `enc28j60: ethernet@0` on SPI1 in the
 - **MAC address:** the driver replaces the first three bytes with Microchip's OUI 00:04:A3; only the last three from the overlay survive.
 - **Interrupt:** INT (PD15) is active low. The ISR only gives a semaphore; the driver's RX thread does all SPI work and counts pending frames with EPKTCNT (EIR.PKTIF is unreliable per the errata).
 - **No reset pin:** the binding has none; the driver resets the chip with the SPI soft-reset command.
-- **Silicon revision:** not read yet. The driver defines `EREVID` (bank 3, 0x12) but never reads it. Values from errata DS80349C table 1: 0x02 B1, 0x04 B4, 0x05 B5, 0x06 B7.
+- **Silicon revision:** the driver defines `EREVID` (bank 3, 0x12) but never reads it, so `src/net/enc28j60_revid.c` reads it once at boot and logs it. It runs as `SYS_INIT(POST_KERNEL, 55)`, between the SPI controller (50) and the ENC28J60 driver (60), so it is the chip's only SPI user while it runs (order checked with `west build -t initlevels`; a `BUILD_ASSERT` guards the priorities). Three SPI commands: BFS ECON1.BSEL = 3, RCR 0x12, BFC ECON1.BSEL back to bank 0. ETH registers are readable before the oscillator start-up timer expires (DS39662C 2.2), so it doesn't wait for CLKRDY. Values from errata DS80349C table 1: 0x02 B1, 0x04 B4, 0x05 B5, 0x06 B7. **Our module reads 0x06 = B7** (current silicon; the < 8 MHz SPI erratum does not apply).
 
 ### Driver vs. errata (Zephyr 4.4.0 `drivers/ethernet/eth_enc28j60.c`)
 

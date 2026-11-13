@@ -9,6 +9,7 @@ target_sources(app PRIVATE
   src/led/hal/led_hal.c
   src/led/cmsis/led_cmsis.c
   src/net/app_net.c
+  src/net/enc28j60_revid.c
   src/net/tcp/app_tcp.c
   src/sensor/app_sensor.c
 )

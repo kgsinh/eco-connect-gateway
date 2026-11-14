@@ -74,6 +74,8 @@ All three are active high. The Zephyr app runs a chase, one LED on at a time, 25
 
 MOSI is on PB5 instead of the usual PA7 because PA7 is the RMII CRS_DV pin on this board.
 
+Checked on the wire with a logic analyzer at a temporary /32 setting (4.30 MHz expected, 4.33 MHz measured, mode 0, CS framing per command): [evidence/spi/README.md](evidence/spi/README.md). The 17.2 MHz release setting is above what the 24 MS/s analyzer can sample, so it is calculated from the prescaler, not measured.
+
 ## Console
 
 USART3, TX PD8 / RX PD9, to the ST-Link virtual COM port. 115200 8N1. Kernel clock rcc_pclk1, 137.5 MHz (USART234578SEL reset default, RM0468 8.7.20).

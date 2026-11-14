@@ -73,6 +73,16 @@ Without a debugger: Zephyr prints a fatal-error dump (faulting PC/LR, thread) on
 ## Console
 ST-Link VCOM (COM5 on this PC; confirm with `Get-CimInstance Win32_PnPEntity | ? Name -match 'COM\d+'`), 115200 8N1. Boot log + Zephyr shell (`uart:~$`). Only one program can hold the port. To read it non-interactively, use pyserial (installed). For interactive use, `python -m serial.tools.miniterm --filter direct COM5 115200`. Without `--filter direct`, miniterm prints the shell's ANSI codes as `␛[..m`.
 
+## Network tests
+PC on the direct cable at 192.168.50.1/24, board at 192.168.50.2 (static mode). After a change to networking, run all of them; details in docs/networking.md:
+
+    ping 192.168.50.2
+    python tools/echo_test.py                  # TCP echo, port 4242
+    curl -v --compressed http://192.168.50.2/  # page, 200 OK, gzip
+    python tools/http_concurrency_test.py      # echo held + 3 HTTP clients at once; exit 0 = pass
+
+Wireshark/tshark captures and Logic 2 `.sal` files contain the PC's MAC address or the user path: keep them local, publish summaries or CSV exports only (docs/gotchas.md, Bench instruments). `tools/spi_decode.py` decodes a Logic 2 CSV export of SPI1.
+
 ## Static analysis
 Run only when explicitly requested. Both scripts need a current `west build` (they take include paths, defines and Kconfig from build/compile_commands.json via tools/analysis_flags.py) and report only findings in src/. From the repo root, Git Bash:
 

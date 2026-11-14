@@ -1,6 +1,6 @@
 # Eco-Connect IoT Gateway — NUCLEO-H723ZG
 
-IoT gateway on the **NUCLEO-H723ZG** (STM32H723ZG, Cortex-M7) running Zephyr 4.4.0. It reads a BME280 temperature/pressure/humidity sensor over I2C and is reachable over Ethernet through an ENC28J60 on SPI. The firmware mixes three API layers on purpose: Zephyr APIs, STM32Cube HAL and CMSIS register access, one LED each. A separate bare-metal blinky shows the same board driven from registers alone.
+IoT gateway on the **NUCLEO-H723ZG** (STM32H723ZG, Cortex-M7) running Zephyr 4.4.0. It reads a BME280 temperature/pressure/humidity sensor over I2C and is reachable over Ethernet through an ENC28J60 on SPI, where it serves a web page and a TCP echo service. The firmware mixes three API layers on purpose: Zephyr APIs, STM32Cube HAL and CMSIS register access, one LED each. A separate bare-metal blinky shows the same board driven from registers alone.
 
 ## Week-one deliverables
 
@@ -12,6 +12,19 @@ IoT gateway on the **NUCLEO-H723ZG** (STM32H723ZG, Cortex-M7) running Zephyr 4.4
 | 4 | ENC28J60 via Zephyr's driver | [boards/nucleo_h723zg.overlay](boards/nucleo_h723zg.overlay), [src/net](src/net) | 10 Mbps link, ping replies |
 | 5/7 | Repo and README | this file: requirements, build, flash | |
 | 6 | Pins and clocks note | [docs/pins-and-clocks.md](docs/pins-and-clocks.md) | |
+
+## TCP/IP bring-up (week two)
+
+Goal: bring up Zephyr's TCP/IP stack over the ENC28J60; done when the board gets an IP, answers ping and serves a static web page. Details, design decisions and test results: [docs/networking.md](docs/networking.md).
+
+| Item | Where | Tested on hardware |
+|---|---|---|
+| IP address | [src/net/app_net.c](src/net/app_net.c) | Static 192.168.50.2/24; DHCP builds, not yet tested |
+| Ping | Zephyr IPv4 stack | PC → board, 1-2 ms |
+| TCP echo server, port 4242 | [src/net/tcp](src/net/tcp) | `tools/echo_test.py` |
+| Static web page, port 80 | [src/net/http](src/net/http), [src/web/index.html](src/web/index.html) | Browser, curl, 3 clients at once |
+| ENC28J60 silicon revision | [src/net/enc28j60_revid.c](src/net/enc28j60_revid.c) | Reads 0x06 = B7 |
+| Evidence: RAM/ROM, DMA decision, Wireshark, SPI capture | [docs/evidence](docs/evidence) | |
 
 ## Status
 
@@ -48,7 +61,7 @@ ENC28J60 wiring (3.3 V module, no regulator):
 | INT | D9 | PD15 |
 | RESET, WOL, CLKOUT | not connected (RESET has an internal pull-up) | — |
 
-BME280 wiring (3.3 V breakout): VCC to 3V3, GND to GND, SCL to D15 (PB8), SDA to D14 (PB9). I2C address 0x76.
+BME280 wiring (3.3 V breakout): VCC to 3V3, GND to GND, SCL to D15 (PB8), SDA to D14 (PB9). I2C address 0x76. Readings are logged every 2 s at debug level, hidden by default: `log enable dbg app_sensor` in the shell shows them, `log enable inf app_sensor` hides them again, `sensor get bme280@76` takes one reading.
 
 **Console:** ST-Link virtual COM port, 115200 8N1. It shows boot logs and the Zephyr shell (`uart:~$`; try `net iface`, `net ping <ip>`, `help`). The shell uses ANSI colour/cursor codes, so use a terminal that understands them: `python -m serial.tools.miniterm --filter direct COMx 115200` or PuTTY. Plain miniterm shows them as `␛[..m`.
 
@@ -82,17 +95,24 @@ debug.conf          Extra settings for a debug build (-Og, asserts, thread info)
 boards/
   nucleo_h723zg.overlay   Devicetree overlay (frees PB14 from TIM12 PWM)
 src/
-  main.c                LD1 via Zephyr, LED chase, starts network and sensor
+  main.c                LD1 via Zephyr, LED chase, starts network, servers and sensor
   net/
     app_net.c/.h        Ethernet bring-up: static IP or DHCPv4, logs the lease
+    enc28j60_revid.c    Reads and logs the ENC28J60 silicon revision at boot (SYS_INIT)
+    tcp/app_tcp.c/.h    TCP echo server, port 4242, own thread
+    http/app_http.c/.h  Web page on port 80 (Zephyr HTTP server); http_sections.ld
+  web/
+    index.html          The page, gzipped into the image at build time
   sensor/
     app_sensor.c/.h     BME280 thread: temperature, pressure, humidity every 2 s
   led/
     hal/led_hal.c/.h      LD2 via STM32Cube HAL
     cmsis/led_cmsis.c/.h  LD3 via CMSIS registers
 baremetal/blinky/       Register-only blinky: no HAL, no RTOS (own startup + linker script)
-docs/               Reference manuals (local only, see below)
-tools/              Build env, VS Code debug templates, static analysis, MISRA deviations
+docs/               Architecture, APIs, networking, pins and clocks, gotchas;
+                    evidence/ (RAM/ROM, network, SPI); reference PDFs (local only, see below)
+tools/              Build env, VS Code templates, static analysis, MISRA deviations;
+                    echo_test.py, http_concurrency_test.py, spi_decode.py (bench tests)
 ```
 
 ## Mixing Zephyr, HAL and CMSIS
@@ -161,7 +181,7 @@ west build -p always -b nucleo_h723zg -- -DCONFIG_APP_NET_STATIC=n -DCONFIG_APP_
 
 `Could not find a package configuration file provided by "Zephyr-sdk"` means `zephyr_env.sh` was not sourced in this shell.
 
-Output: `build/zephyr/zephyr.elf`, about 193 KB flash and 49 KB RAM (release, with TCP, sockets and the GPIO shell). Both variants use `build/`; `grep DEBUG_OPTIMIZATIONS build/zephyr/.config` shows which one is there.
+Output: `build/zephyr/zephyr.elf`, about 214 KB flash and 57 KB RAM (release: TCP, sockets, HTTP server, shells). Breakdown in [docs/evidence/ram-rom](docs/evidence/ram-rom/README.md). Both variants use `build/`; `grep DEBUG_OPTIMIZATIONS build/zephyr/.config` shows which one is there.
 
 Bare-metal register blinky (no Zephyr, CMake + Ninja):
 
@@ -340,4 +360,7 @@ Not stored in git (`docs/*.pdf` is gitignored). Download the ST documents from s
 | `docs/stm32h723zg.pdf` | Datasheet: electrical characteristics, pinout, package |
 | `docs/um3252-stm32h7-series.pdf` | X-CUBE-CLASSB self-test library guide (IEC 60730 Class B) |
 | (not yet downloaded) UM2407 | Nucleo-144 board user manual: jumpers, solder bridges, board wiring |
+| `docs/enc28j60.pdf` | Microchip ENC28J60 data sheet (DS39662): SPI commands, registers, buffer |
+| `docs/80349c.pdf` | ENC28J60 silicon errata (DS80349C): revision IDs, SPI clock, ERXRDPT, TX stall |
+| `docs/bst-bme280-ds002.pdf` | Bosch BME280 data sheet: registers, compensation, I2C address |
 | `docs/MISRA-C-2025.pdf` | MISRA C:2025: licensed copy, local only |

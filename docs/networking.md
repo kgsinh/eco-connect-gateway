@@ -11,6 +11,7 @@ Bring up the Zephyr TCP/IP stack over the ENC28J60. Done when the board gets an 
 | IP address | Static 192.168.50.2/24: tested. DHCPv4: builds, not tested yet (needs a router or a DHCP server). |
 | Ping | Tested, PC → board, 1-2 ms, TTL 64. |
 | TCP | Echo server on port 4242 (`src/net/tcp/app_tcp.c`): tested, `tools/echo_test.py` 5/5 lines echoed, twice in a row (the accept loop serves a new client after the previous one closes). |
+| Concurrent clients | Tested: 1 echo client held open + 3 HTTP clients at once (`tools/http_concurrency_test.py`), and in a browser (two connections, no RST). Needed two Kconfig fixes, see below. |
 | Static web page | Zephyr HTTP server on port 80 (`src/net/http/app_http.c`): tested: `/` shows the page in a browser, unknown paths return `404 Not Found` (curl). |
 
 ## Stack configuration
@@ -23,7 +24,20 @@ Bring up the Zephyr TCP/IP stack over the ENC28J60. Done when the board gets an 
 | `ENTROPY_GENERATOR` | TCP needs random numbers. The STM32H7 RNG is the source (`ENTROPY_STM32_RNG`); `TEST_RANDOM_GENERATOR` (not secure) is not used. |
 | `NET_IF_UNICAST_IPV4_ADDR_COUNT=1` | One address per interface, static or DHCP. |
 
-Socket file descriptors: `ZVFS_OPEN_MAX=0` does not mean "none". `lib/os/CMakeLists.txt` sizes the table as the sum of the `ZVFS_OPEN_ADD_SIZE_*` requests (networking 6 + socket service 1 = 7).
+Socket file descriptors: `ZVFS_OPEN_MAX=0` does not mean "none". `lib/os/CMakeLists.txt` sizes the table as the sum of the `ZVFS_OPEN_ADD_SIZE_*` requests: networking 6 + socket service 1 + eventfd 1 = 8 (the eventfd request comes with the HTTP server).
+
+Threads in the network path (priorities from this build; negative = cooperative, never preempted by another thread):
+
+| Thread | Priority | Role |
+|---|---|---|
+| ENC28J60 RX (driver) | coop -14 | Woken by INT; reads frames over SPI, hands them to the stack |
+| Network RX (traffic class 0) | coop -1 | Ethernet, ARP, IPv4, ICMP, TCP input; sends ACKs and ping replies itself |
+| net_mgmt | coop -1 | Delivers events such as `NET_EVENT_IF_UP` to callbacks |
+| HTTP server (Zephyr) | coop -1 | Polls its listener and clients, sends responses |
+| TCP work queue | (Zephyr) | Retransmission, keepalive and connection-release timers |
+| Echo server (ours) | 8 | Accept loop, one client at a time |
+
+There is no network TX thread (`NET_TC_TX_COUNT=0`): the thread that sends a packet also writes it to the ENC28J60. See the sequence diagram in [architecture.md](architecture.md#serving-a-page).
 
 ## ENC28J60 driver
 
@@ -64,7 +78,7 @@ Found by reading the source against the datasheet and errata. The first two rows
 
 Zephyr's HTTP server (`CONFIG_HTTP_SERVER`, marked experimental in 4.4, so `CONFIG_EXPERIMENTAL` is on and the build prints a warning; acceptable while Zephyr is pinned at v4.4.0). HTTP/1.1 only: `HTTP_SERVER_VERSION_2=n`, since browsers use HTTP/2 only over TLS.
 
-- **The server owns its thread** (`K_THREAD_DEFINE` in `http_server_core.c`, 3 KB stack, lowest preemptible priority). `http_server_start()` only wakes it; it then listens and serves. The app only describes the site.
+- **The server owns its thread** (`K_THREAD_DEFINE` in `http_server_core.c`, 3 KB stack, lowest cooperative priority, coop -1, because the network threads are cooperative in this build). `http_server_start()` only wakes it; it then listens and serves. The app only describes the site.
 - **Site description** (`app_http.c`): `HTTP_SERVICE_DEFINE(gw_http_service, NULL, &port 80, MAX_CLIENTS 3, backlog 2, ...)` listens on all addresses, so it starts before the link is up and works with static or DHCP addresses. `HTTP_RESOURCE_DEFINE(index_resource, gw_http_service, "/", &detail)` with `HTTP_RESOURCE_TYPE_STATIC`, GET only, `text/html`. No fallback resource, so other paths get 404.
 - **Linker section:** each `HTTP_RESOURCE_DEFINE` places an entry in section `http_resource_desc_<service>`, and the service walks it between `_..._list_start` and `_..._list_end`. Zephyr's linker script doesn't know the section, so `src/net/http/http_sections.ld` adds it (`ITERABLE_SECTION_ROM`) through `zephyr_linker_sources(SECTIONS ...)` in CMakeLists.txt. Without it the link fails on the undefined list symbols; the service name in both files must match.
 - **MISRA:** the resource detail is not `const` because `HTTP_RESOURCE_DEFINE` casts it to `void *` (Rule 11.8); the server only reads it.
@@ -90,7 +104,10 @@ PC adapter on the direct cable: 192.168.50.1/24. Board shell on the ST-Link seri
 1. `net iface` (board): carrier ON, 10 Mbit, address present.
 2. `ping 192.168.50.2` (PC). Windows Firewall blocks inbound ping by default, so test PC → board.
 3. `python tools/echo_test.py` (PC): `ok ping 0` … `ok ping 4`.
-4. `net stats`, `net conn`, `net tcp` (board): counters and open connections.
-5. Wireshark: `ip.addr == 192.168.50.2 and tcp.port == 4242`.
+4. Browser at `http://192.168.50.2/`, or `curl -v --compressed http://192.168.50.2/` (`200 OK`, `Content-Encoding: gzip`); `/nothing` gives 404.
+5. `python tools/http_concurrency_test.py` (PC): echo connection held open, three HTTP clients at once, all `200 OK`; exit code 0.
+6. `net stats`, `net conn`, `net tcp` (board): counters and open connections. Idle, `net conn` shows listeners on 80 and 4242 and the DHCP client's UDP 68.
+7. Wireshark on the PC adapter: `ip.addr == 192.168.50.2 and (tcp.port == 80 or tcp.port == 4242)`. `tshark` (installed with Wireshark) exports summary lines for the evidence folder.
+8. SPI: logic-analyzer CSV export decoded with `python tools/spi_decode.py <file.csv>`; at 24 MS/s use a temporary SPI clock of 5 MHz or less (see [evidence/spi/README.md](evidence/spi/README.md)).
 
 The first ping after boot can report "Destination host unreachable" until the board answers ARP; a retry works.

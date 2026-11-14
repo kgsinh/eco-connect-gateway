@@ -43,6 +43,22 @@ Things that cost time on this project and are not obvious from the code. Network
 - `CONFIG_REBOOT` is off, so `kernel reboot cold` isn't available.
 - BME280 readings are logged at debug level and hidden at boot by `CONFIG_SHELL_BACKEND_SERIAL_LOG_LEVEL_INF`. `LOG_RUNTIME_DEFAULT_LEVEL` alone doesn't hide them: when the shell backend starts, it sets every module to its own level, and its default ("system limit") is each module's compiled level. `log enable dbg app_sensor` shows them, `log enable inf app_sensor` hides them; `log status` lists every module's level. Not persistent across resets.
 
+## Networking
+
+Details and evidence in [networking.md](networking.md).
+
+- **Zephyr's default socket limits allow only one TCP client at a time** once two servers and DHCP are running: `NET_MAX_CONN=4` (the connection table also holds listeners and DHCP's UDP port) and `ZVFS_POLL_MAX=3` (the HTTP server polls all its sockets at once and restarts on `-ENOMEM`). Neither failure is logged at default log levels; only a capture showed them. Raised to 8 and 5.
+- **The HTTP server always sends `Content-Encoding: gzip`** for a gzipped static resource, whatever the client's `Accept-Encoding`. Browsers cope; use `curl --compressed`.
+- **`net_if_is_up()` means enabled *and* link up.** Register the `NET_EVENT_IF_UP` callback first, then check `net_if_is_up()`: the link can come up before `main()` runs.
+- **Network threads are cooperative here** (`NET_TC_THREAD_COOPERATIVE`), and so is the HTTP server thread (coop -1). There is no TX thread: the sending thread writes the frame to the ENC28J60 itself.
+
+## Bench instruments
+
+- **A 24 MS/s logic analyzer cannot decode SPI at 17.2 MHz** (fewer than 1.5 samples per clock): the clock and decoded bytes are aliasing artefacts. Capture with a temporary `spi-max-frequency` of 5 MHz or less in an extra overlay (`-DEXTRA_DTC_OVERLAY_FILE=...`, built into a separate build directory), and check the sample rate actually used (one capture here ran at 12 MS/s on a 24 MS/s unit).
+- **Logic 2 `.sal` files are not shareable as-is:** `meta.json` inside stores the path of installed extensions, which includes the Windows user folder, and the sample data is in an internal compressed format. Commit the CSV export (File → Export Data) instead; `tools/spi_decode.py` decodes it.
+- **Wireshark captures of the PC adapter carry the PC's MAC address, IPv6 link-local address and Windows discovery traffic** (WS-Discovery, mDNS). Keep `.pcapng` files local (gitignored) and publish filtered `tshark` summary lines.
+- **CubeProgrammer CLI couldn't hot-attach to the running firmware** (`mode=HOTPLUG`), not even to a debug build with debug-in-sleep enabled ("Cannot connect to access port 0"). Reading peripheral registers from a running image needs another route (GDB attach through ST-LINK_gdbserver, not tried yet).
+
 ## Parts
 
 - **ENC28J60** (DS39662C): 3.1-3.6 V, inputs 5 V tolerant, SPI mode 0 only, up to 20 MHz, 25 MHz crystal on the module, 10BASE-T only. INT is active low. Up to 180 mA while transmitting. Errata DS80349C issue 1: SPI below 8 MHz makes MAC register access unreliable on revisions B1 and B4 only.

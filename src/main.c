@@ -20,10 +20,11 @@
 #include "led/cmsis/led_cmsis.h"
 #include "net/app_net.h"
 #include "net/tcp/app_tcp.h"
+#include "net/http/app_http.h"
 #include "sensor/app_sensor.h"
 
-#define TICK_MS    250
-#define LED_COUNT  3U
+#define TICK_MS   250
+#define LED_COUNT 3U
 
 static const struct gpio_dt_spec ld1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 
@@ -80,6 +81,9 @@ int main(void)
 
 	/* The server thread waits for the interface; main() continues at once */
 	(void)app_tcp_start();
+
+	/* Listens on all addresses, so it can start before the link is up */
+	(void)app_http_start();
 
 	/* A missing sensor is logged; the LEDs and network keep running */
 	(void)app_sensor_start();

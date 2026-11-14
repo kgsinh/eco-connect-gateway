@@ -11,7 +11,7 @@ Bring up the Zephyr TCP/IP stack over the ENC28J60. Done when the board gets an 
 | IP address | Static 192.168.50.2/24: tested. DHCPv4: builds, not tested yet (needs a router or a DHCP server). |
 | Ping | Tested, PC → board, 1-2 ms, TTL 64. |
 | TCP | Echo server on port 4242 (`src/net/tcp/app_tcp.c`): tested, `tools/echo_test.py` 5/5 lines echoed, twice in a row (the accept loop serves a new client after the previous one closes). |
-| Static web page | Not started. Plan: Zephyr's HTTP server (see below). |
+| Static web page | Zephyr HTTP server on port 80 (`src/net/http/app_http.c`): tested: `/` shows the page in a browser, unknown paths return `404 Not Found` (curl). |
 
 ## Stack configuration
 
@@ -60,9 +60,17 @@ Found by reading the source against the datasheet and errata. Not reproduced on 
 - Socket addresses are filled through Zephyr's `net_sin()` helper on a `struct net_sockaddr`, so our code has no pointer cast (MISRA C Rule 11.3).
 - PC test client: `python tools/echo_test.py [host]` sends five lines and checks each echo.
 
-## Planned: static web page
+## Static web page
 
-Zephyr's HTTP server (`CONFIG_HTTP_SERVER`, marked experimental in 4.4): `HTTP_SERVICE_DEFINE` + a static `HTTP_RESOURCE_DEFINE`, started with `http_server_start()`. CMake needs a linker section for the service's resource table and a build step that gzips the HTML into an include file (as in `samples/net/sockets/http_server`). It runs its own thread (3 KB default stack). Fallback if it costs too much RAM: a minimal HTTP/1.0 responder on the existing socket code (`samples/net/sockets/dumb_http_server`).
+Zephyr's HTTP server (`CONFIG_HTTP_SERVER`, marked experimental in 4.4, so `CONFIG_EXPERIMENTAL` is on and the build prints a warning; acceptable while Zephyr is pinned at v4.4.0). HTTP/1.1 only: `HTTP_SERVER_VERSION_2=n`, since browsers use HTTP/2 only over TLS.
+
+- **The server owns its thread** (`K_THREAD_DEFINE` in `http_server_core.c`, 3 KB stack, lowest preemptible priority). `http_server_start()` only wakes it; it then listens and serves. The app only describes the site.
+- **Site description** (`app_http.c`): `HTTP_SERVICE_DEFINE(gw_http_service, NULL, &port 80, MAX_CLIENTS 3, backlog 2, ...)` listens on all addresses, so it starts before the link is up and works with static or DHCP addresses. `HTTP_RESOURCE_DEFINE(index_resource, gw_http_service, "/", &detail)` with `HTTP_RESOURCE_TYPE_STATIC`, GET only, `text/html`. No fallback resource, so other paths get 404.
+- **Linker section:** each `HTTP_RESOURCE_DEFINE` places an entry in section `http_resource_desc_<service>`, and the service walks it between `_..._list_start` and `_..._list_end`. Zephyr's linker script doesn't know the section, so `src/net/http/http_sections.ld` adds it (`ITERABLE_SECTION_ROM`) through `zephyr_linker_sources(SECTIONS ...)` in CMakeLists.txt. Without it the link fails on the undefined list symbols; the service name in both files must match.
+- **MISRA:** the resource detail is not `const` because `HTTP_RESOURCE_DEFINE` casts it to `void *` (Rule 11.8); the server only reads it.
+- **Cost:** +16.9 KB flash, +7.5 KB RAM for the server (3,136 B thread stack, 4,008 B `server_ctx` for 3 clients with 256 B buffers); the page and table add ~300 B flash.
+- **Sockets:** `NET_MAX_CONTEXTS=6`. Idle, `net conn` shows two contexts (listeners on 80 and 4242); each connected client adds one, so the worst case (1 echo + 3 HTTP clients) uses all 6. The DHCP client (UDP 68) uses a connection handler, not a context.
+- **Next:** the HTML moves to its own file, gzipped into the image at build time (`generate_inc_file_for_target`, as in `samples/net/sockets/http_server`).
 
 ## Testing on the bench
 

@@ -11,8 +11,13 @@ target_sources(app PRIVATE
   src/net/app_net.c
   src/net/enc28j60_revid.c
   src/net/tcp/app_tcp.c
+  src/net/http/app_http.c
   src/sensor/app_sensor.c
 )
 
 # Single include root: sources include "led/hal/led_hal.h", "net/app_net.h"
 target_include_directories(app PRIVATE src)
+
+# Linker section holding the HTTP server's static resource table
+zephyr_linker_sources(SECTIONS src/net/http/http_sections.ld)
+

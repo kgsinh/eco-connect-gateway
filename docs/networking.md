@@ -33,11 +33,11 @@ Zephyr's `microchip,enc28j60` driver, node `enc28j60: ethernet@0` on SPI1 in the
 - **MAC address:** the driver replaces the first three bytes with Microchip's OUI 00:04:A3; only the last three from the overlay survive.
 - **Interrupt:** INT (PD15) is active low. The ISR only gives a semaphore; the driver's RX thread does all SPI work and counts pending frames with EPKTCNT (EIR.PKTIF is unreliable per the errata).
 - **No reset pin:** the binding has none; the driver resets the chip with the SPI soft-reset command.
-- **Silicon revision:** the driver defines `EREVID` (bank 3, 0x12) but never reads it, so `src/net/enc28j60_revid.c` reads it once at boot and logs it. It runs as `SYS_INIT(POST_KERNEL, 55)`, between the SPI controller (50) and the ENC28J60 driver (60), so it is the chip's only SPI user while it runs (order checked with `west build -t initlevels`; a `BUILD_ASSERT` guards the priorities). Three SPI commands: BFS ECON1.BSEL = 3, RCR 0x12, BFC ECON1.BSEL back to bank 0. ETH registers are readable before the oscillator start-up timer expires (DS39662C 2.2), so it doesn't wait for CLKRDY. Values from errata DS80349C table 1: 0x02 B1, 0x04 B4, 0x05 B5, 0x06 B7. **Our module reads 0x06 = B7** (current silicon; the < 8 MHz SPI erratum does not apply).
+- **Silicon revision:** the driver defines `EREVID` (bank 3, 0x12) but never reads it, so `src/net/enc28j60_revid.c` reads it once at boot and logs it. It runs as `SYS_INIT(POST_KERNEL, 55)`, between the SPI controller (50) and the ENC28J60 driver (60), so it is the chip's only SPI user while it runs (order checked with `west build -t initlevels`; a `BUILD_ASSERT` guards the priorities). Three SPI commands: BFS ECON1.BSEL = 3, RCR 0x12, BFC ECON1.BSEL back to bank 0. ETH registers are readable before the oscillator start-up timer expires (DS39662C 2.2), so it doesn't wait for CLKRDY. Values from errata DS80349C table 1: 0x02 B1, 0x04 B4, 0x05 B5, 0x06 B7. **Our module reads 0x06 = B7** (current silicon; the < 8 MHz SPI erratum does not apply). The ID read is also visible on the wire as the first three SPI commands after reset ([evidence/spi/README.md](evidence/spi/README.md)).
 
 ### Driver vs. errata (Zephyr 4.4.0 `drivers/ethernet/eth_enc28j60.c`)
 
-Found by reading the source against the datasheet and errata. Not reproduced on hardware; questions for the bench, not confirmed bugs. The upstream tree is not edited.
+Found by reading the source against the datasheet and errata. The first two rows are visible on the wire in a logic-analyzer capture of the boot sequence ([evidence/spi/README.md](evidence/spi/README.md)): ERXRDPT written 0x0000, and 14 µs from the reset command to the next access. No fault has been seen on the bench from any of them so far. The upstream tree is not edited.
 
 | Topic | Errata / datasheet | Driver |
 |---|---|---|
@@ -69,7 +69,16 @@ Zephyr's HTTP server (`CONFIG_HTTP_SERVER`, marked experimental in 4.4, so `CONF
 - **Linker section:** each `HTTP_RESOURCE_DEFINE` places an entry in section `http_resource_desc_<service>`, and the service walks it between `_..._list_start` and `_..._list_end`. Zephyr's linker script doesn't know the section, so `src/net/http/http_sections.ld` adds it (`ITERABLE_SECTION_ROM`) through `zephyr_linker_sources(SECTIONS ...)` in CMakeLists.txt. Without it the link fails on the undefined list symbols; the service name in both files must match.
 - **MISRA:** the resource detail is not `const` because `HTTP_RESOURCE_DEFINE` casts it to `void *` (Rule 11.8); the server only reads it.
 - **Cost:** +16.9 KB flash, +7.5 KB RAM for the server (3,136 B thread stack, 4,008 B `server_ctx` for 3 clients with 256 B buffers); the page and table add ~300 B flash.
-- **Sockets:** `NET_MAX_CONTEXTS=6`. Idle, `net conn` shows two contexts (listeners on 80 and 4242); each connected client adds one, so the worst case (1 echo + 3 HTTP clients) uses all 6. The DHCP client (UDP 68) uses a connection handler, not a context.
+- **Concurrent clients: three Zephyr limits, sized for 2 listeners + 1 echo client + 3 HTTP clients.** Two defaults allowed only one TCP client at a time; found with Wireshark, details in [evidence/network/README.md](evidence/network/README.md).
+
+  | Limit | Value | Peak use | Fails as |
+  |---|---|---|---|
+  | `NET_MAX_CONN` (connection table: listeners, TCP clients, UDP ports incl. DHCP's 68) | 8 (default 4) | 7 | SYN answered with RST |
+  | `ZVFS_POLL_MAX` (fds in one `poll()`; the HTTP server polls eventfd + listener + clients) | 5 (default 3) | 5 | HTTP server restarts, dropping every client |
+  | `NET_MAX_CONTEXTS` (sockets) | 6 (default) | 6 | `socket()`/`accept()` fail |
+
+  The fd table is 8 (6 sockets + 1 socket service + 1 eventfd); peak use 7. `tools/http_concurrency_test.py` checks it (echo held open + 3 HTTP clients at once).
+- **First-response latency (open):** responses can take 50-250 ms although the request is ACKed in 2 ms; likely Nagle (headers and body sent as two writes) against Windows' delayed ACK. See the evidence README.
 - **The page is `src/web/index.html`.** `generate_inc_file_for_target(app src/web/index.html .../include/generated/index.html.gz.inc --gzip)` in CMakeLists.txt runs `scripts/build/file2hex.py` at build time: gzip level 9 with timestamp 0 (same HTML, same bytes), written as `0x1f, 0x8b, ...` under `build/` and `#include`d inside a `uint8_t` array in `app_http.c`. Editing the HTML and running `west build` regenerates it; no pristine build needed. 1,371 B of HTML becomes 773 B in flash and on the wire.
 - **gzip is sent unconditionally:** for a static resource with `content_encoding` set, the HTTP/1 server always adds `Content-Encoding: gzip` and doesn't check the client's `Accept-Encoding` (`http_server_http1.c`). Browsers always accept it; with curl use `--compressed`.
 - Tested: `curl -v --compressed` → `200 OK`, `Content-Encoding: gzip`, `Content-Length: 773`, page decoded; `/nothing` → 404; echo server still answers.

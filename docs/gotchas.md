@@ -11,7 +11,7 @@ Things that cost time on this project and are not obvious from the code. Network
 - **The board's `pwm-led0` alias still points at the disabled PWM LED** (TIM12 is disabled so CMSIS can own PB14). Don't enable `CONFIG_LED_PWM` or use `pwm-led0` unless the overlay changes back.
 - **Disabling a bus node doesn't disable its children.** With `&mdio` disabled, `eth_phy` stayed enabled and the PHY driver failed to build (`__device_dts_ord_N undeclared`). Disable the child too.
 - **SRAM2 is free since the switch to the ENC28J60.** The on-board MAC used it for DMA buffers through a non-cacheable MPU region (`soc/st/stm32/stm32h7x/mpu_regions.c`); that region only exists while `&mac` is enabled. The ENC28J60 path has no DMA (SPI without `dmas`), so no cache maintenance is needed.
-- **Memory map (H723 under Zephyr):** ITCM 64 KB @0, DTCM 128 KB @0x20000000 (`zephyr,dtcm`, no DMA), AXI SRAM 320 KB @0x24000000 (`zephyr,sram`, cached), SRAM1/2 16 KB each @0x30000000/0x30004000, SRAM4 16 KB @0x38000000. D/I-cache, MPU and `NOCACHE_MEMORY` are on.
+- **Memory map (H723 under Zephyr):** ITCM 64 KB @0, DTCM 128 KB @0x20000000 (`zephyr,dtcm`, no DMA), AXI SRAM 320 KB @0x24000000 (`zephyr,sram`, cached), SRAM1/2 16 KB each @0x30000000/0x30004000, SRAM4 16 KB @0x38000000. D/I-cache and MPU are on; `NOCACHE_MEMORY` is not (it was only needed for the on-board MAC). DMA1/DMA2 can't reach DTCM (RM0468 §2.1.6). DMA buffer policy: [evidence/ram-rom/README.md](evidence/ram-rom/README.md#dma-buffers-decision).
 
 ## Build and toolchain
 

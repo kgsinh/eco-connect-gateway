@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eco-Connect Gateway</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 40rem;
+         padding: 0 1rem; color: #1d2330; background: #f6f7f9; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+  p.sub { margin-top: 0; color: #5a6270; }
+  table { border-collapse: collapse; width: 100%; background: #fff; }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #e3e6eb; }
+  th { width: 35%; color: #5a6270; font-weight: 600; }
+  footer { margin-top: 1.5rem; font-size: 0.85rem; color: #5a6270; }
+</style>
+</head>
+<body>
+<h1>Eco-Connect Gateway</h1>
+<p class="sub">Served by Zephyr's HTTP server over the ENC28J60.</p>
+<table>
+  <tr><th>Board</th><td>NUCLEO-H723ZG (STM32H723ZG, Cortex-M7, 550 MHz)</td></tr>
+  <tr><th>RTOS</th><td>Zephyr 4.4.0</td></tr>
+  <tr><th>Ethernet</th><td>ENC28J60, 10BASE-T half duplex, SPI1 at 17.2 MHz</td></tr>
+  <tr><th>Address</th><td>192.168.50.2/24 (static)</td></tr>
+  <tr><th>Services</th><td>HTTP on port 80, TCP echo on port 4242</td></tr>
+  <tr><th>Sensor</th><td>BME280 on I2C1 (live readings: not on this page yet)</td></tr>
+</table>
+<footer>Static page, gzipped into the firmware image at build time.</footer>
+</body>
+</html>

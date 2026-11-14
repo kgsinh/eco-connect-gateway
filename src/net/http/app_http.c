@@ -4,7 +4,7 @@
  *
  * The server runs in Zephyr's own thread (subsys/net/lib/http); this file only
  * describes the site. Its resource table needs the linker section in
- * http_sections.ld.
+ * http_sections.ld. The page is src/web/index.html, gzipped at build time.
  */
 #include "app_http.h"
 #include <stddef.h>
@@ -13,10 +13,14 @@
 #include <zephyr/net/http/server.h>
 #include <zephyr/net/http/service.h>
 
-static const char index_html[] = "<!DOCTYPE html>\n"
-				 "<html><head><title>Eco-Connect Gateway</title></head>\n"
-				 "<body><h1>Eco-Connect Gateway</h1>\n"
-				 "<p>Served by Zephyr over the ENC28J60.</p></body></html>\n";
+/*
+ * Generated from src/web/index.html by CMakeLists.txt (file2hex.py --gzip).
+ * The #include inside the initializer is Zephyr's usual way to embed a file
+ * (MISRA Rule 20.1 is advisory).
+ */
+static const uint8_t index_html_gz[] = {
+#include "index.html.gz.inc"
+};
 
 /* Not const: HTTP_RESOURCE_DEFINE casts it to void * (MISRA 11.8); the server only reads it */
 static struct http_resource_detail_static index_detail = {
@@ -24,11 +28,12 @@ static struct http_resource_detail_static index_detail = {
 		{
 			.type = HTTP_RESOURCE_TYPE_STATIC,
 			.bitmask_of_supported_http_methods = BIT(HTTP_GET),
+			/* Sent unconditionally: the server doesn't check Accept-Encoding */
+			.content_encoding = "gzip",
 			.content_type = "text/html",
 		},
-	.static_data = index_html,
-	/* sizeof includes the string's terminating NUL, which is not page content */
-	.static_data_len = sizeof(index_html) - 1U,
+	.static_data = index_html_gz,
+	.static_data_len = sizeof(index_html_gz),
 };
 
 /* Passed by pointer: port 0 would request an ephemeral port, written back here */

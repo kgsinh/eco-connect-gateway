@@ -70,7 +70,9 @@ Zephyr's HTTP server (`CONFIG_HTTP_SERVER`, marked experimental in 4.4, so `CONF
 - **MISRA:** the resource detail is not `const` because `HTTP_RESOURCE_DEFINE` casts it to `void *` (Rule 11.8); the server only reads it.
 - **Cost:** +16.9 KB flash, +7.5 KB RAM for the server (3,136 B thread stack, 4,008 B `server_ctx` for 3 clients with 256 B buffers); the page and table add ~300 B flash.
 - **Sockets:** `NET_MAX_CONTEXTS=6`. Idle, `net conn` shows two contexts (listeners on 80 and 4242); each connected client adds one, so the worst case (1 echo + 3 HTTP clients) uses all 6. The DHCP client (UDP 68) uses a connection handler, not a context.
-- **Next:** the HTML moves to its own file, gzipped into the image at build time (`generate_inc_file_for_target`, as in `samples/net/sockets/http_server`).
+- **The page is `src/web/index.html`.** `generate_inc_file_for_target(app src/web/index.html .../include/generated/index.html.gz.inc --gzip)` in CMakeLists.txt runs `scripts/build/file2hex.py` at build time: gzip level 9 with timestamp 0 (same HTML, same bytes), written as `0x1f, 0x8b, ...` under `build/` and `#include`d inside a `uint8_t` array in `app_http.c`. Editing the HTML and running `west build` regenerates it; no pristine build needed. 1,371 B of HTML becomes 773 B in flash and on the wire.
+- **gzip is sent unconditionally:** for a static resource with `content_encoding` set, the HTTP/1 server always adds `Content-Encoding: gzip` and doesn't check the client's `Accept-Encoding` (`http_server_http1.c`). Browsers always accept it; with curl use `--compressed`.
+- Tested: `curl -v --compressed` → `200 OK`, `Content-Encoding: gzip`, `Content-Length: 773`, page decoded; `/nothing` → 404; echo server still answers.
 
 ## Testing on the bench
 

@@ -21,3 +21,7 @@ target_include_directories(app PRIVATE src)
 # Linker section holding the HTTP server's static resource table
 zephyr_linker_sources(SECTIONS src/net/http/http_sections.ld)
 
+# Web page: src/web/index.html, gzipped into a C byte list at build time
+generate_inc_file_for_target(app src/web/index.html
+	${ZEPHYR_BINARY_DIR}/include/generated/index.html.gz.inc --gzip)
+

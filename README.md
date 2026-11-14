@@ -32,7 +32,7 @@ Tested: 10 Mb half-duplex link (the ENC28J60 has no autonegotiation; the PC adap
 
 **TCP/IP services** (details and test status in [docs/networking.md](docs/networking.md)):
 
-- **Web page** on port 80 (`src/net/http/app_http.c`, Zephyr's HTTP server): open `http://192.168.50.2/` in a browser. Tested in a browser and with `curl -v`.
+- **Web page** on port 80 (`src/net/http/app_http.c`, Zephyr's HTTP server): open `http://192.168.50.2/` in a browser. The page is `src/web/index.html`, gzipped into the image at build time; edit it and rebuild. With curl, use `curl --compressed`. Tested in a browser and with curl.
 - **TCP echo server** on port 4242 (`src/net/tcp/app_tcp.c`): `python tools/echo_test.py [host]` sends five lines and checks each echo. Tested.
 
 ENC28J60 wiring (3.3 V module, no regulator):
